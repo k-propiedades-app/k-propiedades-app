@@ -10,6 +10,7 @@ App web instalable (PWA) y open source para guardar y ver desde el celular las p
 - **Documentos**: actas de toma de razón, fotos de medidores, contratos, promesas, órdenes de corretaje (fotos o PDF).
 - **Personas**: propietarios, arrendatarios, compradores e interesados, con botón de llamar y WhatsApp.
 - **Publicar**: botón Compartir que envía las fotos con marca y el texto del aviso ya redactado.
+- **Newsletter para LinkedIn**: botón en Propiedades que arma el texto del período (nuevas, bajas de precio, arrendadas/vendidas) con links a la vitrina, para copiar o compartir.
 - **Vitrina pública** (`/vitrina/`): página para clientes con las propiedades disponibles o en negociación. Solo muestra datos públicos (fotos con marca, precio, m², comuna, descripción) y botón de WhatsApp. Se actualiza desde la app con "Publicar en vitrina".
 - **Sin conexión**: todo queda guardado en el celular. Se recomienda descargar un respaldo semanal y subirlo a Google Drive.
 

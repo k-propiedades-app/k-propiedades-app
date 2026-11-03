@@ -175,6 +175,13 @@ function captacionDe(p) {
   const hechas = CAPTACION.filter(t => (p.captacion || {})[t]).length;
   return { tareas: CAPTACION, hechas, lista: hechas === CAPTACION.length };
 }
+// Registra fechas útiles para el newsletter cuando cambia el estado.
+function marcarCambioEstado(p, antes) {
+  const hoy = new Date().toISOString().slice(0, 10);
+  if (estadoDe(p) === antes) return;
+  if (cerrada(p)) p.fechaCierre = hoy;
+  if (estadoDe(p) === 'Disponible' && !p.fechaDisponible) p.fechaDisponible = hoy;
+}
 function postventaDe(p) {
   const tareas = POSTVENTA[estadoDe(p)] || [];
   const hechas = tareas.filter(t => (p.postventa || {})[t]).length;
@@ -194,6 +201,7 @@ VISTAS.propiedades = async (main) => {
   const props = (await todos('props')).sort((a, b) => b.creado - a.creado);
   const fotos = (await todos('media')).filter(m => m.kind === 'foto');
   main.innerHTML = `
+    <button class="btn sec ancho" id="irNews" style="margin:0 0 12px">📰 Newsletter para LinkedIn</button>
     <div class="barra">
       <input id="buscar" type="search" placeholder="Buscar por comuna, dirección, rol…">
       <select id="filtro" style="max-width:40%"><option value="">Todas</option>${ESTADOS.map(e => `<option>${e}</option>`).join('')}<option value="pv">⭐ Postventa pendiente</option></select>
@@ -218,13 +226,14 @@ VISTAS.propiedades = async (main) => {
     });
   };
   $('#buscar').oninput = listar; $('#filtro').onchange = listar; listar();
+  $('#irNews').onclick = () => ir('newsletter', {});
   fab(() => ir('editarProp', {}));
 };
 
 VISTAS.editarProp = async (main, { id }) => {
   const p = id ? await uno('props', id) : { id: nuevoId(), creado: Date.now(), tipo: 'Departamento', operacion: 'Arriendo', estado: 'Captar', moneda: 'CLP', vitrina: 'si' };
   p.estado = estadoDe(p);
-  const estadoAntes = p.estado;
+  const estadoAntes = p.estado, precioAntes = p.precio;
   const personas = (await todos('personas')).sort((a, b) => a.nombre.localeCompare(b.nombre));
   titulo(id ? 'Editar propiedad' : 'Nueva propiedad');
   const opt = (arr, v) => arr.map(x => `<option ${x === v ? 'selected' : ''}>${x}</option>`).join('');
@@ -255,7 +264,10 @@ VISTAS.editarProp = async (main, { id }) => {
     e.preventDefault();
     Object.assign(p, { vitrina: '' }, Object.fromEntries(new FormData(e.target)));
     p.titulo = p.titulo || `${p.tipo} ${p.comuna || ''}`.trim();
-    if (p.estado !== estadoAntes && cerrada(p)) p.fechaCierre = new Date().toISOString().slice(0, 10);
+    marcarCambioEstado(p, estadoAntes);
+    if (precioAntes && p.precio && Number(p.precio) < Number(precioAntes)) {
+      p.precioAnterior = precioAntes; p.fechaBajaPrecio = new Date().toISOString().slice(0, 10);
+    }
     p.actualizado = Date.now();
     await guardar('props', p);
     aviso('Propiedad guardada');
@@ -358,8 +370,9 @@ VISTAS.propiedad = async (main, { id }) => {
   main.querySelectorAll('[data-estado]').forEach(b => b.onclick = async () => {
     const nuevo = b.dataset.estado;
     if (nuevo === estadoDe(p)) return;
+    const antes = estadoDe(p);
     p.estado = nuevo; p.actualizado = Date.now();
-    if (cerrada(p)) p.fechaCierre = new Date().toISOString().slice(0, 10);
+    marcarCambioEstado(p, antes);
     await guardar('props', p);
     aviso(cerrada(p) ? `¡${nuevo}! Se activó la postventa ⭐` : `Estado: ${nuevo}`);
     pintar();
@@ -538,6 +551,70 @@ function visor(m, tipo) {
     if (a === 'borrar' && confirm('¿Eliminar este archivo?')) { await borrar('media', m.id); v.remove(); aviso('Eliminado'); pintar(); }
   };
 }
+
+// ---------- Newsletter ----------
+function lineaProp(p, conLink = true, extra = '') {
+  const datos = [precioTxt(p) && precioTxt(p) + (p.operacion === 'Arriendo' && p.moneda !== 'UF' ? '/mes' : ''),
+    p.m2util && `${p.m2util} m²`, p.dorm && `${p.dorm}D`, p.banos && `${p.banos}B`].filter(Boolean).join(' · ');
+  return `• ${p.tipo} en ${p.operacion.toLowerCase()}${p.comuna ? ', ' + p.comuna : ''}${datos ? ' · ' + datos : ''}` +
+    extra + (conLink ? `\n  👉 ${URL_VITRINA}#p=${p.id}` : '');
+}
+function textoNewsletter(props, dias, cfg) {
+  const desde = Date.now() - dias * 864e5;
+  const fecha = f => f ? new Date(f + 'T12:00').getTime() : 0;
+  const enPeriodo = f => fecha(f) >= desde;
+  const vis = p => p.vitrina !== '' && ['Disponible', 'Negociando'].includes(estadoDe(p));
+  const nuevas = props.filter(p => vis(p) && enPeriodo(p.fechaDisponible || new Date(p.creado).toISOString().slice(0, 10)));
+  const bajas = props.filter(p => vis(p) && p.precioAnterior && enPeriodo(p.fechaBajaPrecio) && !nuevas.includes(p));
+  const cerradas = props.filter(p => cerrada(p) && enPeriodo(p.fechaCierre));
+  const otras = props.filter(p => vis(p) && !nuevas.includes(p) && !bajas.includes(p));
+  const mes = new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+  const l = [`📰 Novedades K Propiedades · ${mes.charAt(0).toUpperCase() + mes.slice(1)}`, '',
+    '¡Hola! Te compartimos las novedades de nuestra cartera de propiedades.'];
+  if (nuevas.length) l.push('', '🆕 Nuevas propiedades', ...nuevas.map(p => lineaProp(p)));
+  if (bajas.length) l.push('', '📉 Bajaron de precio', ...bajas.map(p => lineaProp(p, true,
+    ` (antes ${p.moneda === 'UF' ? 'UF ' : '$'}${Number(p.precioAnterior).toLocaleString('es-CL')})`)));
+  if (cerradas.length) l.push('', '🔑 Arrendadas y vendidas', ...cerradas.map(p =>
+    `• ${p.tipo}${p.comuna ? ' en ' + p.comuna : ''}: ¡${estadoDe(p).toLowerCase().slice(0, -1)}${['Casa', 'Oficina', 'Parcela', 'Bodega'].includes(p.tipo) ? 'a' : 'o'}! Gracias por confiar en nosotros.`));
+  if (otras.length) l.push('', '🏠 También disponibles', ...otras.slice(0, 8).map(p => lineaProp(p)));
+  if (!nuevas.length && !bajas.length && !cerradas.length && !otras.length) l.push('', '(No hay propiedades para mostrar en este período.)');
+  l.push('', '¿Quieres arrendar o vender tu propiedad? Te acompañamos en todo el proceso, desde la captación hasta la postventa.',
+    `📲 ${cfg.telefono}${cfg.email ? ' · ✉️ ' + cfg.email : ''}`, `🌐 Todas las propiedades: ${URL_VITRINA}`, '',
+    `${cfg.hashtags} #CorretajeDePropiedades #BienesRaíces`);
+  return { texto: l.join('\n'), n: { nuevas: nuevas.length, bajas: bajas.length, cerradas: cerradas.length, otras: otras.length } };
+}
+
+VISTAS.newsletter = async (main) => {
+  titulo('Newsletter');
+  const props = await todos('props'), cfg = await ajustes();
+  main.innerHTML = `<div class="seccion">
+      <h2>Newsletter para LinkedIn</h2>
+      <p class="sub" style="margin-top:0">Se arma solo con las propiedades nuevas, las que bajaron de precio y las arrendadas o vendidas en el período. Revisa y ajusta el texto antes de publicar.</p>
+      <label>Período</label>
+      <select id="periodo"><option value="7">Última semana</option><option value="15">Últimos 15 días</option><option value="30" selected>Último mes</option><option value="90">Últimos 3 meses</option></select>
+      <p class="sub" id="resumenNl"></p>
+      <textarea id="textoNl" style="min-height:340px;font-size:15px"></textarea>
+      <div class="acciones" style="margin-top:10px">
+        <button class="btn" id="nlCopiar">📋 Copiar</button>
+        <button class="btn sec" id="nlCompartir">📤 Compartir</button>
+        <button class="btn sec" id="nlLinkedin">💼 Abrir LinkedIn</button>
+      </div>
+      <p class="sub">Para que los links funcionen, primero publica la vitrina (Ajustes → Publicar en vitrina).</p>
+    </div>`;
+  const generar = () => {
+    const r = textoNewsletter(props, Number($('#periodo').value), cfg);
+    $('#textoNl').value = r.texto;
+    $('#resumenNl').textContent = `${r.n.nuevas} nueva(s) · ${r.n.bajas} con baja de precio · ${r.n.cerradas} arrendada(s)/vendida(s) · ${r.n.otras} otra(s) disponible(s)`;
+  };
+  $('#periodo').onchange = generar; generar();
+  $('#nlCopiar').onclick = () => copiar($('#textoNl').value);
+  $('#nlCompartir').onclick = () => compartir([], $('#textoNl').value);
+  $('#nlLinkedin').onclick = async () => {
+    try { await navigator.clipboard.writeText($('#textoNl').value); } catch (e) { /* sin portapapeles */ }
+    aviso('Texto copiado: pégalo en la publicación');
+    window.open('https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent($('#textoNl').value), '_blank', 'noopener');
+  };
+};
 
 // ---------- Personas ----------
 const ROLES = ['Propietario', 'Arrendatario', 'Comprador', 'Interesado', 'Otro'];
