@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f1a14">
+  <title>K Propiedades</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <button id="atras" class="icon-btn" aria-label="Volver" hidden>‹</button>
+    <img src="logo.png" alt="" class="top-logo">
+    <h1 id="titulo">Propiedades</h1>
+  </header>
+  <main id="vista"></main>
+  <nav class="tabs">
+    <button data-tab="propiedades" class="activo">🏠<span>Propiedades</span></button>
+    <button data-tab="personas">👥<span>Personas</span></button>
+    <button data-tab="ajustes">⚙️<span>Ajustes</span></button>
+  </nav>
+  <div id="aviso" class="aviso" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
