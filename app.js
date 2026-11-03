@@ -34,7 +34,38 @@ const todos = s => tx(s, 'readonly', o => o.getAll());
 const uno = (s, id) => tx(s, 'readonly', o => o.get(id));
 const guardar = (s, v) => tx(s, 'readwrite', o => o.put(v));
 const borrar = (s, id) => tx(s, 'readwrite', o => o.delete(id));
-const mediaDe = propId => tx('media', 'readonly', o => o.index('propId').getAll(propId));
+const mediaDe = async propId => (await tx('media', 'readonly', o => o.index('propId').getAll(propId))).filter(m => !m.borrado);
+// Registros vigentes (los borrados quedan marcados para que el borrado llegue también a Google Drive).
+const vivos = async s => (await todos(s)).filter(x => !x.borrado);
+// Guarda un dato del negocio y avisa a la sincronización con Google.
+async function guardarDato(s, v) {
+  v.actualizado = Date.now(); v.sinSubir = true;
+  await guardar(s, v);
+  if (window.nube) nube.pedirSync();
+}
+async function borrarDato(s, id) {
+  const v = await uno(s, id);
+  if (!v) return;
+  v.borrado = Date.now();
+  if (s === 'media') { delete v.blob; delete v.blobMarca; }
+  await guardarDato(s, v);
+}
+// Devuelve el archivo; si solo está en Google Drive lo descarga y lo deja en el celular.
+async function blobDe(m, campo = 'blob') {
+  if (m[campo]) return m[campo];
+  const driveId = campo === 'blobMarca' ? m.driveIdMarca : m.driveId;
+  if (!driveId || !window.nube) return null;
+  const b = await nube.descargar(driveId);
+  if (!b) return null;
+  m[campo] = b;
+  const actual = await uno('media', m.id);
+  if (actual) { actual[campo] = b; await guardar('media', actual); }
+  return b;
+}
+// Muestra una imagen que puede estar solo en Drive.
+function imgDiferida(img, m, campo) {
+  blobDe(m, campo).then(b => { if (b) img.src = url(b); else img.alt = 'Sin conexión'; }).catch(() => {});
+}
 const nuevoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 const AJUSTES_BASE = { corredora: 'K Propiedades', telefono: '+56 9 3499 7313', email: 'kliberona.b@gmail.com', hashtags: '#KPropiedades #propiedades #Chile', marcaAuto: true };
@@ -181,8 +212,8 @@ function chipEstado(p) {
 
 VISTAS.propiedades = async (main) => {
   titulo('Propiedades');
-  const props = (await todos('props')).sort((a, b) => b.creado - a.creado);
-  const fotos = (await todos('media')).filter(m => m.kind === 'foto');
+  const props = (await vivos('props')).sort((a, b) => b.creado - a.creado);
+  const fotos = (await vivos('media')).filter(m => m.kind === 'foto').sort((a, b) => a.creado - b.creado);
   main.innerHTML = `
     <div class="barra">
       <input id="buscar" type="search" placeholder="Buscar por comuna, dirección, rol…">
@@ -199,10 +230,11 @@ VISTAS.propiedades = async (main) => {
     vis.forEach(p => {
       const foto = fotos.find(m => m.propId === p.id);
       const b = document.createElement('button'); b.className = 'tarjeta';
-      b.innerHTML = `${foto ? `<img src="${url(foto.blob)}" alt="">` : '<div class="sinfoto">🏠</div>'}
+      b.innerHTML = `${foto ? '<img alt="">' : '<div class="sinfoto">🏠</div>'}
         <div class="info"><h3>${esc(p.titulo || p.tipo)}</h3>
         <div class="sub">${esc([p.direccion, p.comuna].filter(Boolean).join(', '))}</div>
         <span class="chip oro">${esc(p.operacion)}</span>${chipEstado(p)}${precioTxt(p) ? `<span class="chip">${precioTxt(p)}</span>` : ''}</div>`;
+      if (foto) imgDiferida(b.querySelector('img'), foto, 'blob');
       b.onclick = () => ir('propiedad', { id: p.id });
       $('#lista').appendChild(b);
     });
@@ -215,7 +247,7 @@ VISTAS.editarProp = async (main, { id }) => {
   const p = id ? await uno('props', id) : { id: nuevoId(), creado: Date.now(), tipo: 'Departamento', operacion: 'Arriendo', estado: 'Disponible', moneda: 'CLP', vitrina: 'si' };
   p.estado = estadoDe(p);
   const estadoAntes = p.estado;
-  const personas = (await todos('personas')).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const personas = (await vivos('personas')).sort((a, b) => a.nombre.localeCompare(b.nombre));
   titulo(id ? 'Editar propiedad' : 'Nueva propiedad');
   const opt = (arr, v) => arr.map(x => `<option ${x === v ? 'selected' : ''}>${x}</option>`).join('');
   const campo = (k, lbl, tipo = 'text', extra = '') => `<label>${lbl}</label><input name="${k}" type="${tipo}" value="${esc(p[k])}" ${extra}>`;
@@ -247,14 +279,14 @@ VISTAS.editarProp = async (main, { id }) => {
     p.titulo = p.titulo || `${p.tipo} ${p.comuna || ''}`.trim();
     if (p.estado !== estadoAntes && cerrada(p)) p.fechaCierre = new Date().toISOString().slice(0, 10);
     p.actualizado = Date.now();
-    await guardar('props', p);
+    await guardarDato('props', p);
     aviso('Propiedad guardada');
     if (id) volver(); else ir('propiedad', { id: p.id }, true);
   };
   if (id) $('#del').onclick = async () => {
     if (!confirm('¿Eliminar esta propiedad con todas sus fotos, videos y documentos?')) return;
-    for (const m of await mediaDe(id)) await borrar('media', m.id);
-    await borrar('props', id);
+    for (const m of await mediaDe(id)) await borrarDato('media', m.id);
+    await borrarDato('props', id);
     aviso('Propiedad eliminada');
     pila.length = 1; history.go(-2);
     pintar();
@@ -270,7 +302,7 @@ VISTAS.propiedad = async (main, { id }) => {
   titulo(p.titulo || p.tipo);
   const media = (await mediaDe(id)).sort((a, b) => a.creado - b.creado);
   const fotos = media.filter(m => m.kind === 'foto'), videos = media.filter(m => m.kind === 'video'), docs = media.filter(m => m.kind === 'doc');
-  const personas = await todos('personas');
+  const personas = await vivos('personas');
   const prop = personas.find(x => x.id === p.propietarioId);
   const interesados = personas.filter(x => x.propId === id && x.id !== p.propietarioId);
   const cfg = await ajustes();
@@ -340,13 +372,13 @@ VISTAS.propiedad = async (main, { id }) => {
     if (nuevo === estadoDe(p)) return;
     p.estado = nuevo; p.actualizado = Date.now();
     if (cerrada(p)) p.fechaCierre = new Date().toISOString().slice(0, 10);
-    await guardar('props', p);
+    await guardarDato('props', p);
     aviso(cerrada(p) ? `¡${nuevo}! Se activó la postventa ⭐` : `Estado: ${nuevo}`);
     pintar();
   });
   main.querySelectorAll('[data-tarea]').forEach(c => c.onchange = async () => {
     p.postventa = Object.assign({}, p.postventa, { [c.dataset.tarea]: c.checked ? new Date().toISOString().slice(0, 10) : '' });
-    await guardar('props', p);
+    await guardarDato('props', p);
     const pv = postventaDe(p);
     if (!pv.pendiente) { aviso('Postventa completa ✅'); pintar(); }
     else {
@@ -364,9 +396,11 @@ VISTAS.propiedad = async (main, { id }) => {
     const conMarca = $('#verMarca').checked;
     fotos.forEach(f => {
       const d = document.createElement('div'); d.className = 'item';
-      d.innerHTML = `<img src="${url(conMarca ? f.blobMarca || f.blob : f.blob)}" alt="" loading="lazy">
-        ${conMarca && f.blobMarca ? '<span class="marca">con marca</span>' : ''}
+      const marca = conMarca && (f.blobMarca || f.driveIdMarca);
+      d.innerHTML = `<img alt="">
+        ${marca ? '<span class="marca">con marca</span>' : ''}
         <input type="checkbox" class="sel" ${seleccion.has(f.id) ? 'checked' : ''} aria-label="Seleccionar">`;
+      imgDiferida(d.querySelector('img'), f, marca ? 'blobMarca' : 'blob');
       d.querySelector('.sel').onchange = e => { e.target.checked ? seleccion.add(f.id) : seleccion.delete(f.id); };
       d.querySelector('img').onclick = () => visor(f, 'foto');
       g.appendChild(d);
@@ -381,7 +415,7 @@ VISTAS.propiedad = async (main, { id }) => {
     for (const file of files) {
       const blob = await procesarFoto(file, false);
       const blobMarca = cfg.marcaAuto ? await procesarFoto(file, true) : null;
-      await guardar('media', { id: nuevoId(), propId: id, kind: 'foto', name: file.name, blob, blobMarca, creado: Date.now() });
+      await guardarDato('media', { id: nuevoId(), propId: id, kind: 'foto', name: file.name, blob, blobMarca, creado: Date.now() });
     }
     aviso('Fotos guardadas'); pintar();
   };
@@ -391,13 +425,14 @@ VISTAS.propiedad = async (main, { id }) => {
   // Videos
   videos.forEach(v => {
     const d = document.createElement('div'); d.className = 'item';
-    d.innerHTML = `<video src="${url(v.blob)}#t=0.5" muted playsinline preload="metadata"></video><span class="marca">▶ video</span>`;
+    d.innerHTML = v.blob ? `<video src="${url(v.blob)}#t=0.5" muted playsinline preload="metadata"></video><span class="marca">▶ video</span>`
+      : `<div class="sinfoto" style="width:100%;height:100%;color:#fff;background:#222">▶</div><span class="marca">☁️ en Drive</span>`;
     d.onclick = () => visor(v, 'video');
     $('#galVideos').appendChild(d);
   });
   const agregarVideos = async capture => {
     const files = await elegirArchivos({ accept: 'video/*', capture, multiple: !capture });
-    for (const file of files) await guardar('media', { id: nuevoId(), propId: id, kind: 'video', name: file.name, type: file.type, blob: file, creado: Date.now() });
+    for (const file of files) await guardarDato('media', { id: nuevoId(), propId: id, kind: 'video', name: file.name, type: file.type, blob: file, creado: Date.now() });
     if (files.length) { aviso('Video guardado'); pintar(); }
   };
   $('#addVideo').onclick = () => agregarVideos(false);
@@ -418,7 +453,7 @@ VISTAS.propiedad = async (main, { id }) => {
     const files = await elegirArchivos({ accept: 'image/*,application/pdf,.doc,.docx' });
     for (const file of files) {
       const blob = file.type.startsWith('image/') ? await procesarFoto(file, false) : file;
-      await guardar('media', { id: nuevoId(), propId: id, kind: 'doc', categoria: cat, name: file.name, type: blob.type || file.type, blob, creado: Date.now() });
+      await guardarDato('media', { id: nuevoId(), propId: id, kind: 'doc', categoria: cat, name: file.name, type: blob.type || file.type, blob, creado: Date.now() });
     }
     if (files.length) { aviso('Documento guardado'); pintar(); }
   };
@@ -429,7 +464,12 @@ VISTAS.propiedad = async (main, { id }) => {
   $('#compartir').onclick = async () => {
     const elegidas = seleccion.size ? fotos.filter(f => seleccion.has(f.id)) : fotos;
     const base = (p.titulo || 'propiedad').replace(/[^\w]+/g, '_');
-    const files = elegidas.map((f, i) => new File([f.blobMarca || f.blob], `${base}_${i + 1}.jpg`, { type: 'image/jpeg' }));
+    aviso('Preparando fotos…');
+    const files = [];
+    for (const [i, f] of elegidas.entries()) {
+      const b = (await blobDe(f, 'blobMarca')) || (await blobDe(f, 'blob'));
+      if (b) files.push(new File([b], `${base}_${i + 1}.jpg`, { type: 'image/jpeg' }));
+    }
     await compartir(files, texto());
   };
 };
@@ -480,16 +520,18 @@ function elegirCategoria() {
     v.querySelector('#si').onclick = () => { const c = v.querySelector('#cat').value; v.remove(); ok(c); };
   });
 }
-function visor(m, tipo) {
+async function visor(m, tipo) {
+  if (!m.blob && m.driveId) aviso('Descargando desde Google Drive…');
+  const blob = tipo === 'foto' ? (await blobDe(m, 'blobMarca')) || (await blobDe(m, 'blob')) : await blobDe(m, 'blob');
+  if (!blob) { aviso('No se pudo abrir: revisa la conexión'); return; }
   const v = document.createElement('div'); v.className = 'visor';
-  const blob = tipo === 'foto' ? m.blobMarca || m.blob : m.blob;
   let cuerpo;
   if (tipo === 'video') cuerpo = `<video src="${url(blob)}" controls autoplay playsinline></video>`;
   else if (tipo === 'foto' || (m.type || '').startsWith('image/')) cuerpo = `<img src="${url(blob)}" alt="">`;
   else cuerpo = `<div style="color:#fff;text-align:center">📄<br>${esc(m.name)}</div>`;
   v.innerHTML = `<div class="cuerpo">${cuerpo}</div><div class="pie">
     <button class="btn sec" data-a="cerrar">Cerrar</button>
-    ${tipo === 'foto' && m.blobMarca ? '<button class="btn sec" data-a="sin">Compartir sin marca</button>' : ''}
+    ${tipo === 'foto' && (m.blobMarca || m.driveIdMarca) ? '<button class="btn sec" data-a="sin">Compartir sin marca</button>' : ''}
     ${tipo === 'doc' && !(m.type || '').startsWith('image/') ? '<button class="btn sec" data-a="abrir">Abrir</button>' : ''}
     <button class="btn" data-a="compartir">Compartir</button>
     <button class="btn peligro" data-a="borrar">Eliminar</button></div>`;
@@ -501,9 +543,9 @@ function visor(m, tipo) {
     if (!a) return;
     if (a === 'cerrar') v.remove();
     if (a === 'compartir') await compartir([archivo(blob)], '');
-    if (a === 'sin') await compartir([archivo(m.blob, '_sin_marca')], '');
-    if (a === 'abrir') window.open(url(m.blob), '_blank');
-    if (a === 'borrar' && confirm('¿Eliminar este archivo?')) { await borrar('media', m.id); v.remove(); aviso('Eliminado'); pintar(); }
+    if (a === 'sin') { const b = await blobDe(m, 'blob'); if (b) await compartir([archivo(b, '_sin_marca')], ''); }
+    if (a === 'abrir') window.open(url(blob), '_blank');
+    if (a === 'borrar' && confirm('¿Eliminar este archivo?')) { await borrarDato('media', m.id); v.remove(); aviso('Eliminado'); pintar(); }
   };
 }
 
@@ -512,8 +554,8 @@ const ROLES = ['Propietario', 'Arrendatario', 'Comprador', 'Interesado', 'Otro']
 
 VISTAS.personas = async (main) => {
   titulo('Personas');
-  const personas = (await todos('personas')).sort((a, b) => a.nombre.localeCompare(b.nombre));
-  const props = await todos('props');
+  const personas = (await vivos('personas')).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const props = await vivos('props');
   main.innerHTML = `<div class="barra"><input id="buscar" type="search" placeholder="Buscar por nombre, RUT, teléfono…">
     <select id="filtro" style="max-width:40%"><option value="">Todos</option>${ROLES.map(r => `<option>${r}</option>`).join('')}</select></div>
     <div class="lista" id="lista"></div>`;
@@ -538,7 +580,7 @@ VISTAS.persona = async (main, { id }) => {
   const x = await uno('personas', id);
   if (!x) { volver(); return; }
   titulo(x.nombre);
-  const props = await todos('props');
+  const props = await vivos('props');
   const suyas = props.filter(p => p.propietarioId === id);
   const interes = props.find(p => p.id === x.propId);
   const wa = telWhatsapp(x.telefono);
@@ -568,7 +610,7 @@ VISTAS.persona = async (main, { id }) => {
 
 VISTAS.editarPersona = async (main, { id }) => {
   const x = id ? await uno('personas', id) : { id: nuevoId(), creado: Date.now(), rol: 'Interesado', nombre: '' };
-  const props = (await todos('props')).sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
+  const props = (await vivos('props')).sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
   titulo(id ? 'Editar persona' : 'Nueva persona');
   const campo = (k, lbl, tipo = 'text', extra = '') => `<label>${lbl}</label><input name="${k}" type="${tipo}" value="${esc(x[k])}" ${extra}>`;
   main.innerHTML = `<form id="f">
@@ -586,13 +628,13 @@ VISTAS.editarPersona = async (main, { id }) => {
   $('#f').onsubmit = async e => {
     e.preventDefault();
     Object.assign(x, Object.fromEntries(new FormData(e.target)));
-    await guardar('personas', x);
+    await guardarDato('personas', x);
     aviso('Persona guardada');
     if (id) volver(); else ir('persona', { id: x.id }, true);
   };
   if (id) $('#del').onclick = async () => {
     if (!confirm('¿Eliminar a esta persona?')) return;
-    await borrar('personas', id);
+    await borrarDato('personas', id);
     pila.length = 1; history.go(-2); pintar();
   };
 };
@@ -680,7 +722,7 @@ async function publicarVitrina(boton) {
   if (!token) { alert('Primero guarda la llave de publicación de GitHub (más abajo en Ajustes).'); return; }
   if (!navigator.onLine) { alert('Necesitas conexión a internet para publicar.'); return; }
   const cfg = await ajustes();
-  const props = (await todos('props')).filter(enVitrina).sort((a, b) => (b.actualizado || b.creado) - (a.actualizado || a.creado));
+  const props = (await vivos('props')).filter(enVitrina).sort((a, b) => (b.actualizado || b.creado) - (a.actualizado || a.creado));
   if (!confirm(`Se publicarán ${props.length} propiedad(es) en la vitrina. ¿Continuar?`)) return;
   const textoOriginal = boton.textContent; boton.disabled = true;
   try {
@@ -701,7 +743,9 @@ async function publicarVitrina(boton) {
         usadas.add(ruta); rutas.push(ruta.replace('vitrina/', ''));
         if (!existentes.has(ruta)) {
           boton.textContent = `Subiendo fotos… ${++n}`;
-          const blob = await api(token, 'git/blobs', 'POST', { content: await aB64Puro(await fotoVitrina(f.blobMarca || f.blob)), encoding: 'base64' });
+          const original = (await blobDe(f, 'blobMarca')) || (await blobDe(f, 'blob'));
+          if (!original) throw new Error('foto no disponible');
+          const blob = await api(token, 'git/blobs', 'POST', { content: await aB64Puro(await fotoVitrina(original)), encoding: 'base64' });
           cambios.push({ path: ruta, mode: '100644', type: 'blob', sha: blob.sha });
         }
       }
@@ -732,13 +776,13 @@ const aB64 = b => new Promise(ok => { const r = new FileReader(); r.onload = () 
 const deB64 = async s => (await fetch(s)).blob();
 async function exportar() {
   aviso('Preparando respaldo…');
-  const media = await todos('media');
+  const media = (await vivos('media')).filter(m => m.blob);
   for (const m of media) {
     m.blob = await aB64(m.blob);
     if (m.blobMarca) m.blobMarca = await aB64(m.blobMarca);
   }
   const data = { app: 'kpropiedades', version: 1, fecha: new Date().toISOString(),
-    props: await todos('props'), personas: await todos('personas'), ajustes: (await todos('ajustes')).filter(a => a.k !== 'github'), media };
+    props: await vivos('props'), personas: await vivos('personas'), ajustes: (await todos('ajustes')).filter(a => a.k !== 'github'), media };
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   const nombre = `respaldo_K_Propiedades_${new Date().toISOString().slice(0, 10)}.json`;
   const file = new File([blob], nombre, { type: 'application/json' });
@@ -754,13 +798,14 @@ async function importar() {
     const data = JSON.parse(await f.text());
     if (data.app !== 'kpropiedades') throw new Error('archivo');
     if (!confirm('Se agregarán y actualizarán los datos del respaldo. ¿Continuar?')) return;
-    for (const p of data.props) await guardar('props', p);
-    for (const x of data.personas) await guardar('personas', x);
+    for (const p of data.props) await guardarDato('props', p);
+    for (const x of data.personas) await guardarDato('personas', x);
     for (const a of data.ajustes || []) await guardar('ajustes', a);
     for (const m of data.media) {
       m.blob = await deB64(m.blob);
       if (m.blobMarca) m.blobMarca = await deB64(m.blobMarca);
-      await guardar('media', m);
+      delete m.driveId; delete m.driveIdMarca;
+      await guardarDato('media', m);
     }
     aviso('Respaldo restaurado');
   } catch (e) { alert('No pude leer ese archivo. ¿Es un respaldo de K Propiedades?'); }
