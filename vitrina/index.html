@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>K Propiedades · Propiedades en arriendo y venta</title>
+  <meta name="description" content="Departamentos, casas y oficinas en arriendo y venta. Atención personalizada de K Propiedades.">
+  <meta property="og:title" content="K Propiedades">
+  <meta property="og:description" content="Propiedades en arriendo y venta. Escríbenos por WhatsApp.">
+  <meta property="og:image" content="https://k-propiedades-app.github.io/k-propiedades-app/icons/icon-512.png">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#1f1a14">
+  <link rel="icon" href="../icons/icon-192.png">
+  <style>
+    :root {
+      --oro: #b8892f; --oro-2: #8f6a22; --oro-claro: #f6eedc; --tinta: #1f1a14; --gris: #6b645b;
+      --linea: #e6e0d6; --fondo: #faf8f4; --tarjeta: #fff; --wa: #1f9d55;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --tinta: #f2ede4; --gris: #b3aa9d; --linea: #3a342c; --fondo: #15120e; --tarjeta: #221d17; --oro-claro: #3a2f1c; }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: var(--tinta); }
+    a { color: inherit; }
+    .hero { background: #1f1a14; color: #fff; padding: 28px 16px 26px; text-align: center; }
+    .hero img { width: 92px; background: #fff; border-radius: 16px; padding: 8px; }
+    .hero h1 { font-size: 24px; margin: 12px 0 4px; letter-spacing: .2px; }
+    .hero p { margin: 0 auto; color: #d9cfbf; max-width: 520px; }
+    .contacto { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 600;
+      border: 0; border-radius: 10px; padding: 11px 16px; text-decoration: none; cursor: pointer; background: var(--oro); color: #fff; }
+    .btn.wa { background: var(--wa); }
+    .btn.sec { background: rgba(255,255,255,.12); color: #fff; }
+    .btn.claro { background: var(--oro-claro); color: var(--tinta); }
+    main { max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; }
+    .filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .filtros button, .filtros select { font: inherit; font-size: 15px; border: 1px solid var(--linea); background: var(--tarjeta); color: var(--tinta);
+      border-radius: 99px; padding: 8px 14px; }
+    .filtros button.activo { background: var(--oro); color: #fff; border-color: var(--oro); }
+    .grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .card { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 16px; overflow: hidden; cursor: pointer;
+      text-align: left; padding: 0; font: inherit; color: inherit; display: flex; flex-direction: column; }
+    .card .foto { aspect-ratio: 4/3; background: var(--oro-claro) center/cover no-repeat; position: relative; }
+    .etq { position: absolute; left: 10px; top: 10px; background: var(--oro); color: #fff; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 99px; }
+    .etq.neg { left: auto; right: 10px; background: #1f1a14; }
+    .card .cuerpo { padding: 12px 14px 14px; }
+    .precio { font-size: 20px; font-weight: 700; }
+    .card h2 { font-size: 16px; margin: 2px 0 4px; font-weight: 600; }
+    .meta { color: var(--gris); font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+    .vacio { text-align: center; color: var(--gris); padding: 50px 10px; }
+    .det { position: fixed; inset: 0; z-index: 10; background: var(--fondo); overflow-y: auto; }
+    .det .barra { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 10px 16px; background: #1f1a14; color: #fff; }
+    .det .barra button { font: inherit; background: none; border: 0; color: #fff; font-size: 16px; padding: 6px 0; }
+    .carrusel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; background: #000; max-width: 900px; margin: 0 auto; }
+    .carrusel img { flex: 0 0 100%; width: 100%; max-height: 70vh; object-fit: contain; scroll-snap-align: center; }
+    .contador { text-align: center; color: var(--gris); font-size: 13px; padding: 6px; }
+    .det .info { max-width: 900px; margin: 0 auto; padding: 4px 16px 110px; }
+    .det h1 { font-size: 22px; margin: 4px 0; }
+    .ficha { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 14px 0; }
+    .ficha div { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 12px; padding: 10px; }
+    .ficha small { display: block; color: var(--gris); font-size: 12px; }
+    .ficha b { font-size: 16px; }
+    .desc { white-space: pre-wrap; }
+    .accion { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; gap: 8px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      background: var(--tarjeta); border-top: 1px solid var(--linea); }
+    .accion .btn { flex: 1; }
+    footer { text-align: center; color: var(--gris); font-size: 13px; padding: 10px 16px 30px; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <img src="../logo.png" alt="K Propiedades">
+    <h1>Encuentra tu próxima propiedad</h1>
+    <p>Departamentos, casas y oficinas en arriendo y venta, con atención personalizada.</p>
+    <div class="contacto" id="contacto"></div>
+  </header>
+  <main>
+    <div class="filtros" id="filtros">
+      <button data-op="" class="activo">Todas</button>
+      <button data-op="Arriendo">Arriendo</button>
+      <button data-op="Venta">Venta</button>
+      <select id="comuna" aria-label="Comuna"><option value="">Todas las comunas</option></select>
+    </div>
+    <div class="grilla" id="grilla"><p class="vacio">Cargando propiedades…</p></div>
+  </main>
+  <footer id="pie">K Propiedades</footer>
+
+  <script>
+  'use strict';
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let datos = { propiedades: [], contacto: {} }, op = '';
+  const precio = p => !p.precio ? 'Consultar' : (p.moneda === 'UF' ? 'UF ' : '$') + Number(p.precio).toLocaleString('es-CL') + (p.operacion === 'Arriendo' && p.moneda !== 'UF' ? ' /mes' : '');
+  const wa = t => { let d = String(t || '').replace(/\D/g, ''); if (d.length === 9 && d[0] === '9') d = '56' + d; return d; };
+  const linkWa = (msg) => `https://wa.me/${wa(datos.contacto.telefono)}?text=${encodeURIComponent(msg)}`;
+  const meta = p => [p.m2util && `${p.m2util} m²`, p.dorm && `${p.dorm} dorm.`, p.banos && `${p.banos} baño${p.banos > 1 ? 's' : ''}`, Number(p.estac) && `${p.estac} estac.`].filter(Boolean);
+
+  function contacto() {
+    const c = datos.contacto;
+    document.getElementById('contacto').innerHTML =
+      (c.telefono ? `<a class="btn wa" href="${linkWa('Hola, vi la vitrina de K Propiedades y quiero más información.')}" target="_blank" rel="noopener">💬 WhatsApp</a>
+        <a class="btn sec" href="tel:${esc(c.telefono)}">📞 ${esc(c.telefono)}</a>` : '') +
+      (c.email ? `<a class="btn sec" href="mailto:${esc(c.email)}">✉️ Correo</a>` : '');
+    document.getElementById('pie').textContent = `K Propiedades${c.email ? ' · ' + c.email : ''}${datos.actualizado ? ' · Actualizado ' + new Date(datos.actualizado).toLocaleDateString('es-CL') : ''}`;
+  }
+  function listar() {
+    const com = document.getElementById('comuna').value;
+    const vis = datos.propiedades.filter(p => (!op || p.operacion === op) && (!com || p.comuna === com));
+    const g = document.getElementById('grilla');
+    if (!vis.length) { g.innerHTML = `<p class="vacio">${datos.propiedades.length ? 'No hay propiedades con ese filtro.' : 'Pronto publicaremos nuevas propiedades.<br>Escríbenos y te ayudamos a encontrar la tuya.'}</p>`; return; }
+    g.innerHTML = vis.map(p => `<button class="card" data-id="${esc(p.id)}">
+      <div class="foto" style="background-image:url('${p.fotos[0] ? esc(p.fotos[0]) : '../icons/icon-512.png'}')">
+        <span class="etq">${esc(p.operacion)}</span>${p.estado === 'Negociando' ? '<span class="etq neg">En negociación</span>' : ''}</div>
+      <div class="cuerpo"><div class="precio">${precio(p)}</div><h2>${esc(p.titulo)}</h2>
+      <div class="meta">${[p.comuna, ...meta(p)].filter(Boolean).map(esc).map(x => `<span>${x}</span>`).join('')}</div></div></button>`).join('');
+    g.querySelectorAll('.card').forEach(b => b.onclick = () => { location.hash = 'p=' + b.dataset.id; });
+  }
+  function detalle(id) {
+    document.querySelectorAll('.det').forEach(d => d.remove());
+    const p = datos.propiedades.find(x => x.id === id);
+    if (!p) return;
+    document.title = `${p.titulo} · K Propiedades`;
+    const ficha = [['Precio', precio(p)], ['Operación', p.operacion], ['Tipo', p.tipo], ['Comuna', p.comuna], ['m² útiles', p.m2util], ['m² totales', p.m2total],
+      ['Dormitorios', p.dorm], ['Baños', p.banos], ['Estacionam.', Number(p.estac) ? p.estac : ''], ['Bodegas', Number(p.bodega) ? p.bodega : ''],
+      ['Gastos comunes', p.gastosComunes && '$' + Number(p.gastosComunes).toLocaleString('es-CL')]].filter(f => f[1]);
+    const d = document.createElement('div'); d.className = 'det';
+    d.innerHTML = `<div class="barra"><button id="cerrar">‹ Volver</button><button id="compartir">Compartir ↗</button></div>
+      ${p.fotos.length ? `<div class="carrusel" id="car">${p.fotos.map((f, i) => `<img src="${esc(f)}" alt="Foto ${i + 1} de ${esc(p.titulo)}" loading="${i ? 'lazy' : 'eager'}">`).join('')}</div>
+      <div class="contador" id="cont">1 / ${p.fotos.length} · desliza para ver más</div>` : ''}
+      <div class="info">
+        ${p.estado === 'Negociando' ? '<p style="margin:8px 0 0"><b>⏳ En negociación.</b> Escríbenos para quedar en lista de espera.</p>' : ''}
+        <h1>${esc(p.titulo)}</h1>
+        <div class="meta">${[p.comuna, p.ubicacion].filter(Boolean).map(esc).map(x => `<span>📍 ${x}</span>`).join('')}</div>
+        <div class="ficha">${ficha.map(f => `<div><small>${f[0]}</small><b>${esc(f[1])}</b></div>`).join('')}</div>
+        ${p.descripcion ? `<p class="desc">${esc(p.descripcion)}</p>` : ''}
+      </div>
+      <div class="accion">
+        ${datos.contacto.telefono ? `<a class="btn wa" target="_blank" rel="noopener" href="${linkWa(`Hola, me interesa "${p.titulo}" (${p.operacion}, ${precio(p)}). ¿Está disponible? ${location.href}`)}">💬 Me interesa</a>
+        <a class="btn claro" href="tel:${esc(datos.contacto.telefono)}">📞 Llamar</a>` : ''}
+      </div>`;
+    document.body.appendChild(d);
+    document.body.style.overflow = 'hidden';
+    d.querySelector('#cerrar').onclick = () => { history.length > 1 && location.hash ? history.back() : (location.hash = ''); };
+    d.querySelector('#compartir').onclick = async () => {
+      const url = location.href;
+      try { if (navigator.share) { await navigator.share({ title: p.titulo, text: `${p.titulo} · ${precio(p)}`, url }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+      try { await navigator.clipboard.writeText(url); alert('Link copiado'); } catch (e) { prompt('Copia el link:', url); }
+    };
+    const car = d.querySelector('#car');
+    if (car) car.onscroll = () => { d.querySelector('#cont').textContent = `${Math.round(car.scrollLeft / car.clientWidth) + 1} / ${p.fotos.length}`; };
+  }
+  function ruta() {
+    const m = location.hash.match(/p=([\w-]+)/);
+    if (m) detalle(m[1]);
+    else { document.querySelectorAll('.det').forEach(d => d.remove()); document.body.style.overflow = ''; document.title = 'K Propiedades · Propiedades en arriendo y venta'; }
+  }
+  document.querySelectorAll('[data-op]').forEach(b => b.onclick = () => {
+    op = b.dataset.op; document.querySelectorAll('[data-op]').forEach(x => x.classList.toggle('activo', x === b)); listar();
+  });
+  document.getElementById('comuna').onchange = listar;
+  window.addEventListener('hashchange', ruta);
+
+  fetch('datos/propiedades.json', { cache: 'no-cache' })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .catch(() => ({ propiedades: [], contacto: { telefono: '+56 9 3499 7313', email: 'kliberona.b@gmail.com' } }))
+    .then(d => {
+      datos = d; datos.propiedades = datos.propiedades || []; datos.contacto = datos.contacto || {};
+      const comunas = [...new Set(datos.propiedades.map(p => p.comuna).filter(Boolean))].sort();
+      document.getElementById('comuna').innerHTML += comunas.map(c => `<option>${esc(c)}</option>`).join('');
+      document.getElementById('comuna').hidden = comunas.length < 2;
+      contacto(); listar(); ruta();
+    });
+  </script>
+</body>
+</html>

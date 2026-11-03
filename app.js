@@ -37,7 +37,10 @@ const borrar = (s, id) => tx(s, 'readwrite', o => o.delete(id));
 const mediaDe = propId => tx('media', 'readonly', o => o.index('propId').getAll(propId));
 const nuevoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-const AJUSTES_BASE = { corredora: 'K Propiedades', telefono: '', email: '', hashtags: '#KPropiedades #propiedades #Chile', marcaAuto: true };
+const AJUSTES_BASE = { corredora: 'K Propiedades', telefono: '+56 9 3499 7313', email: 'kliberona.b@gmail.com', hashtags: '#KPropiedades #propiedades #Chile', marcaAuto: true };
+// Repositorio donde vive la vitrina pública (GitHub Pages).
+const REPO = 'k-propiedades-app/k-propiedades-app';
+const URL_VITRINA = 'https://k-propiedades-app.github.io/k-propiedades-app/vitrina/';
 async function ajustes() {
   const r = await uno('ajustes', 'general');
   return Object.assign({}, AJUSTES_BASE, r ? r.v : {});
@@ -150,7 +153,31 @@ function fab(fn) {
 
 // ---------- Propiedades ----------
 const TIPOS = ['Departamento', 'Casa', 'Oficina', 'Local comercial', 'Terreno', 'Parcela', 'Bodega', 'Estacionamiento'];
-const ESTADOS = ['Captación', 'Publicada', 'Reservada', 'Arrendada', 'Vendida', 'Pausada'];
+const ESTADOS = ['Disponible', 'Negociando', 'Arrendada', 'Vendida'];
+const ESTADO_ANTIGUO = { 'Captación': 'Disponible', 'Publicada': 'Disponible', 'Pausada': 'Disponible', 'Reservada': 'Negociando' };
+const estadoDe = p => ESTADO_ANTIGUO[p.estado] || (ESTADOS.includes(p.estado) ? p.estado : 'Disponible');
+const cerrada = p => ['Arrendada', 'Vendida'].includes(estadoDe(p));
+const enVitrina = p => p.vitrina !== '' && !cerrada(p);
+// Tareas de postventa (post atención) una vez arrendada o vendida.
+const POSTVENTA = {
+  Arrendada: ['Contrato firmado y copias entregadas', 'Acta de toma de razón firmada (medidores con foto)', 'Entrega de llaves',
+    'Garantía y primer mes pagados', 'Llamada de seguimiento al mes', 'Revisión a los 6 meses', 'Aviso de renovación (2 meses antes del término)',
+    'Pedir recomendación o reseña'],
+  Vendida: ['Promesa firmada', 'Escritura firmada en notaría', 'Inscripción en el Conservador', 'Entrega de la propiedad y acta',
+    'Cambio de titular de servicios (agua, luz, gas)', 'Llamada de seguimiento al mes', 'Pedir recomendación o reseña']
+};
+function postventaDe(p) {
+  const tareas = POSTVENTA[estadoDe(p)] || [];
+  const hechas = tareas.filter(t => (p.postventa || {})[t]).length;
+  return { tareas, hechas, pendiente: tareas.length > 0 && hechas < tareas.length };
+}
+function chipEstado(p) {
+  const e = estadoDe(p), pv = postventaDe(p);
+  const color = { Disponible: 'verde', Negociando: 'amarillo', Arrendada: 'azul', Vendida: 'azul' }[e];
+  let s = `<span class="chip ${color}">${e}</span>`;
+  if (cerrada(p)) s += pv.pendiente ? `<span class="chip estrella">⭐ Postventa ${pv.hechas}/${pv.tareas.length}</span>` : '<span class="chip">✅ Postventa lista</span>';
+  return s;
+}
 
 VISTAS.propiedades = async (main) => {
   titulo('Propiedades');
@@ -159,12 +186,14 @@ VISTAS.propiedades = async (main) => {
   main.innerHTML = `
     <div class="barra">
       <input id="buscar" type="search" placeholder="Buscar por comuna, dirección, rol…">
-      <select id="filtro" style="max-width:40%"><option value="">Todas</option>${ESTADOS.map(e => `<option>${e}</option>`).join('')}</select>
+      <select id="filtro" style="max-width:40%"><option value="">Todas</option>${ESTADOS.map(e => `<option>${e}</option>`).join('')}<option value="pv">⭐ Postventa pendiente</option></select>
     </div>
+    <div class="resumen">${ESTADOS.map(e => `<span>${e} <b>${props.filter(p => estadoDe(p) === e).length}</b></span>`).join('')}
+      <span>⭐ Postventa <b>${props.filter(p => postventaDe(p).pendiente).length}</b></span></div>
     <div class="lista" id="lista"></div>`;
   const listar = () => {
     const q = $('#buscar').value.toLowerCase(), f = $('#filtro').value;
-    const vis = props.filter(p => (!f || p.estado === f) &&
+    const vis = props.filter(p => (!f || (f === 'pv' ? postventaDe(p).pendiente : estadoDe(p) === f)) &&
       [p.titulo, p.direccion, p.comuna, p.rol, p.tipo].join(' ').toLowerCase().includes(q));
     $('#lista').innerHTML = vis.length ? '' : `<p class="vacio">${props.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay propiedades.<br>Toca + para agregar la primera.'}</p>`;
     vis.forEach(p => {
@@ -173,7 +202,7 @@ VISTAS.propiedades = async (main) => {
       b.innerHTML = `${foto ? `<img src="${url(foto.blob)}" alt="">` : '<div class="sinfoto">🏠</div>'}
         <div class="info"><h3>${esc(p.titulo || p.tipo)}</h3>
         <div class="sub">${esc([p.direccion, p.comuna].filter(Boolean).join(', '))}</div>
-        <span class="chip oro">${esc(p.operacion)}</span><span class="chip">${esc(p.estado)}</span>${precioTxt(p) ? `<span class="chip">${precioTxt(p)}</span>` : ''}</div>`;
+        <span class="chip oro">${esc(p.operacion)}</span>${chipEstado(p)}${precioTxt(p) ? `<span class="chip">${precioTxt(p)}</span>` : ''}</div>`;
       b.onclick = () => ir('propiedad', { id: p.id });
       $('#lista').appendChild(b);
     });
@@ -183,7 +212,9 @@ VISTAS.propiedades = async (main) => {
 };
 
 VISTAS.editarProp = async (main, { id }) => {
-  const p = id ? await uno('props', id) : { id: nuevoId(), creado: Date.now(), tipo: 'Departamento', operacion: 'Arriendo', estado: 'Captación', moneda: 'CLP' };
+  const p = id ? await uno('props', id) : { id: nuevoId(), creado: Date.now(), tipo: 'Departamento', operacion: 'Arriendo', estado: 'Disponible', moneda: 'CLP', vitrina: 'si' };
+  p.estado = estadoDe(p);
+  const estadoAntes = p.estado;
   const personas = (await todos('personas')).sort((a, b) => a.nombre.localeCompare(b.nombre));
   titulo(id ? 'Editar propiedad' : 'Nueva propiedad');
   const opt = (arr, v) => arr.map(x => `<option ${x === v ? 'selected' : ''}>${x}</option>`).join('');
@@ -192,8 +223,10 @@ VISTAS.editarProp = async (main, { id }) => {
     ${campo('titulo', 'Nombre corto (ej. Depto 2D2B Ñuñoa)')}
     <div class="fila"><div><label>Tipo</label><select name="tipo">${opt(TIPOS, p.tipo)}</select></div>
       <div><label>Operación</label><select name="operacion">${opt(['Arriendo', 'Venta'], p.operacion)}</select></div></div>
-    <label>Estado</label><select name="estado">${opt(ESTADOS, p.estado)}</select>
-    ${campo('direccion', 'Dirección')}
+    <label>Estado del proceso</label><select name="estado">${opt(ESTADOS, p.estado)}</select>
+    <label class="check"><input type="checkbox" name="vitrina" value="si" ${p.vitrina !== '' ? 'checked' : ''}> Mostrar en la vitrina pública (solo si está disponible o negociando)</label>
+    ${campo('direccion', 'Dirección (privada, no sale en la vitrina)')}
+    ${campo('ubicacionPublica', 'Ubicación para la vitrina (ej. a pasos de metro Ñuble)')}
     <div class="fila"><div>${campo('comuna', 'Comuna')}</div><div>${campo('rol', 'Rol SII')}</div></div>
     <div class="fila"><div>${campo('precio', 'Precio', 'number', 'inputmode="decimal" step="any"')}</div>
       <div><label>Moneda</label><select name="moneda">${opt(['CLP', 'UF'], p.moneda)}</select></div></div>
@@ -210,8 +243,10 @@ VISTAS.editarProp = async (main, { id }) => {
   </form>`;
   $('#f').onsubmit = async e => {
     e.preventDefault();
-    Object.assign(p, Object.fromEntries(new FormData(e.target)));
+    Object.assign(p, { vitrina: '' }, Object.fromEntries(new FormData(e.target)));
     p.titulo = p.titulo || `${p.tipo} ${p.comuna || ''}`.trim();
+    if (p.estado !== estadoAntes && cerrada(p)) p.fechaCierre = new Date().toISOString().slice(0, 10);
+    p.actualizado = Date.now();
     await guardar('props', p);
     aviso('Propiedad guardada');
     if (id) volver(); else ir('propiedad', { id: p.id }, true);
@@ -243,9 +278,13 @@ VISTAS.propiedad = async (main, { id }) => {
   main.innerHTML = `
     <div class="seccion">
       <h2>${esc(p.titulo)} <button class="btn sec chico" id="editar">Editar</button></h2>
-      <span class="chip oro">${esc(p.operacion)}</span><span class="chip">${esc(p.estado)}</span>
+      <span class="chip oro">${esc(p.operacion)}</span><span id="chipsEstado">${chipEstado(p)}</span>${enVitrina(p) ? '<span class="chip">🌐 En vitrina</span>' : ''}
+      <div class="estados" role="group" aria-label="Estado del proceso">
+        ${ESTADOS.map(e => `<button data-estado="${e}" class="${estadoDe(p) === e ? 'activo' : ''}">${e}</button>`).join('')}
+      </div>
       <dl class="datos" style="margin-top:10px">
-        ${fila('Precio', precioTxt(p))}${fila('Dirección', p.direccion)}${fila('Comuna', p.comuna)}${fila('Rol', p.rol)}
+        ${fila('Precio', precioTxt(p))}${fila('Dirección', p.direccion)}${fila('Comuna', p.comuna)}${fila('Ubic. pública', p.ubicacionPublica)}${fila('Rol', p.rol)}
+        ${fila(estadoDe(p) === 'Vendida' ? 'Vendida el' : 'Arrendada el', cerrada(p) && p.fechaCierre ? new Date(p.fechaCierre + 'T12:00').toLocaleDateString('es-CL') : '')}
         ${fila('m² útiles', p.m2util)}${fila('m² totales', p.m2total)}${fila('Dormitorios', p.dorm)}${fila('Baños', p.banos)}
         ${fila('Estacionam.', p.estac)}${fila('Bodegas', p.bodega)}
         ${fila('Gastos com.', p.gastosComunes && '$' + Number(p.gastosComunes).toLocaleString('es-CL'))}
@@ -253,6 +292,15 @@ VISTAS.propiedad = async (main, { id }) => {
       </dl>
       ${p.notas ? `<p class="sub" style="white-space:pre-wrap">📝 ${esc(p.notas)}</p>` : ''}
     </div>
+
+    ${cerrada(p) ? (() => {
+      const pv = postventaDe(p);
+      return `<div class="seccion postventa">
+      <h2>${pv.pendiente ? '⭐' : '✅'} Postventa (${pv.hechas}/${pv.tareas.length})</h2>
+      <p class="sub" style="margin-top:0">${pv.pendiente ? 'Marca cada paso a medida que se cumple. La estrella se quita cuando todo está listo.' : 'Postventa completa. ¡Buen trabajo!'}</p>
+      ${pv.tareas.map(t => `<label class="check"><input type="checkbox" data-tarea="${esc(t)}" ${(p.postventa || {})[t] ? 'checked' : ''}> ${esc(t)}</label>`).join('')}
+    </div>`;
+    })() : ''}
 
     <div class="seccion">
       <h2>Publicar</h2>
@@ -287,6 +335,25 @@ VISTAS.propiedad = async (main, { id }) => {
     </div>`;
 
   $('#editar').onclick = () => ir('editarProp', { id });
+  main.querySelectorAll('[data-estado]').forEach(b => b.onclick = async () => {
+    const nuevo = b.dataset.estado;
+    if (nuevo === estadoDe(p)) return;
+    p.estado = nuevo; p.actualizado = Date.now();
+    if (cerrada(p)) p.fechaCierre = new Date().toISOString().slice(0, 10);
+    await guardar('props', p);
+    aviso(cerrada(p) ? `¡${nuevo}! Se activó la postventa ⭐` : `Estado: ${nuevo}`);
+    pintar();
+  });
+  main.querySelectorAll('[data-tarea]').forEach(c => c.onchange = async () => {
+    p.postventa = Object.assign({}, p.postventa, { [c.dataset.tarea]: c.checked ? new Date().toISOString().slice(0, 10) : '' });
+    await guardar('props', p);
+    const pv = postventaDe(p);
+    if (!pv.pendiente) { aviso('Postventa completa ✅'); pintar(); }
+    else {
+      main.querySelector('.postventa h2').textContent = `⭐ Postventa (${pv.hechas}/${pv.tareas.length})`;
+      $('#chipsEstado').innerHTML = chipEstado(p);
+    }
+  });
   main.querySelectorAll('[data-persona]').forEach(b => b.onclick = () => ir('persona', { id: b.dataset.persona }));
 
   // Galería de fotos
@@ -492,7 +559,7 @@ VISTAS.persona = async (main, { id }) => {
   $('#lp').innerHTML = lista.length ? '' : '<p class="sub">Ninguna vinculada.</p>';
   lista.forEach(([p, r]) => {
     const b = document.createElement('button'); b.className = 'tarjeta';
-    b.innerHTML = `<div class="info"><h3>${esc(p.titulo)}</h3><span class="chip">${r}</span><span class="chip">${esc(p.estado)}</span></div>`;
+    b.innerHTML = `<div class="info"><h3>${esc(p.titulo)}</h3><span class="chip">${r}</span>${chipEstado(p)}</div>`;
     b.onclick = () => ir('propiedad', { id: p.id });
     $('#lp').appendChild(b);
   });
@@ -537,6 +604,7 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instal
 VISTAS.ajustes = async (main) => {
   titulo('Ajustes');
   const cfg = await ajustes();
+  const gh = await tokenGitHub();
   let uso = '';
   if (navigator.storage && navigator.storage.estimate) {
     const e = await navigator.storage.estimate();
@@ -552,6 +620,13 @@ VISTAS.ajustes = async (main) => {
       <label class="check"><input type="checkbox" name="marcaAuto" ${cfg.marcaAuto ? 'checked' : ''}> Crear versión con marca de agua al agregar fotos</label>
       <button class="btn ancho">Guardar</button>
     </form>
+    <div class="seccion"><h2>Vitrina pública</h2>
+      <p class="sub" style="margin-top:0">Página para clientes con las propiedades disponibles o en negociación marcadas "Mostrar en la vitrina". Solo sale información pública: fotos con marca, precio, m², comuna y descripción.</p>
+      <a class="btn sec ancho" href="${URL_VITRINA}" target="_blank" rel="noopener">🌐 Ver vitrina</a>
+      <button class="btn ancho" id="pub">🚀 Publicar en vitrina</button>
+      <label>Llave de publicación de GitHub ${gh ? '✅ guardada' : '(se pide una sola vez)'}</label>
+      <input id="token" type="password" placeholder="${gh ? '•••••••• (guardada en este celular)' : 'github_pat_…'}" autocomplete="off">
+      <button class="btn sec ancho" id="guardarToken">Guardar llave</button></div>
     <div class="seccion"><h2>Logo para videos</h2>
       <p class="sub" style="margin-top:0">Guárdalo en la galería y agrégalo como sticker de foto al publicar Reels o historias.</p>
       <a class="btn sec ancho" href="sticker.png" download="K_Propiedades_sticker.png">🏷️ Descargar sticker</a></div>
@@ -570,7 +645,88 @@ VISTAS.ajustes = async (main) => {
   };
   $('#exp').onclick = exportar;
   $('#imp').onclick = importar;
+  $('#guardarToken').onclick = async () => {
+    const t = $('#token').value.trim();
+    if (!t) return;
+    await guardar('ajustes', { k: 'github', v: t });
+    aviso('Llave guardada'); pintar();
+  };
+  $('#pub').onclick = e => publicarVitrina(e.target);
 };
+
+// ---------- Vitrina pública: sube datos y fotos al repositorio en un solo cambio ----------
+async function tokenGitHub() { const r = await uno('ajustes', 'github'); return r ? r.v : ''; }
+const aB64Puro = async b => (await aB64(b)).split(',')[1];
+async function api(token, ruta, metodo = 'GET', cuerpo) {
+  const r = await fetch(`https://api.github.com/repos/${REPO}/${ruta}`, {
+    method: metodo,
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) },
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined
+  });
+  if (!r.ok) {
+    const err = new Error(`GitHub ${r.status}`); err.status = r.status; throw err;
+  }
+  return r.json();
+}
+async function fotoVitrina(blob) {
+  const img = await imagen(blob);
+  const k = Math.min(1, 1200 / Math.max(img.width, img.height));
+  const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.82));
+}
+async function publicarVitrina(boton) {
+  const token = await tokenGitHub();
+  if (!token) { alert('Primero guarda la llave de publicación de GitHub (más abajo en Ajustes).'); return; }
+  if (!navigator.onLine) { alert('Necesitas conexión a internet para publicar.'); return; }
+  const cfg = await ajustes();
+  const props = (await todos('props')).filter(enVitrina).sort((a, b) => (b.actualizado || b.creado) - (a.actualizado || a.creado));
+  if (!confirm(`Se publicarán ${props.length} propiedad(es) en la vitrina. ¿Continuar?`)) return;
+  const textoOriginal = boton.textContent; boton.disabled = true;
+  try {
+    boton.textContent = 'Conectando…';
+    const ref = await api(token, 'git/ref/heads/main');
+    const padre = ref.object.sha;
+    const commit = await api(token, `git/commits/${padre}`);
+    const arbol = await api(token, `git/trees/${commit.tree.sha}?recursive=1`);
+    const existentes = new Set(arbol.tree.filter(t => t.path.startsWith('vitrina/datos/fotos/')).map(t => t.path));
+    const cambios = [], usadas = new Set();
+    const publicas = [];
+    let n = 0;
+    for (const p of props) {
+      const fotos = (await mediaDe(p.id)).filter(m => m.kind === 'foto').sort((a, b) => a.creado - b.creado).slice(0, 12);
+      const rutas = [];
+      for (const f of fotos) {
+        const ruta = `vitrina/datos/fotos/${f.id}.jpg`;
+        usadas.add(ruta); rutas.push(ruta.replace('vitrina/', ''));
+        if (!existentes.has(ruta)) {
+          boton.textContent = `Subiendo fotos… ${++n}`;
+          const blob = await api(token, 'git/blobs', 'POST', { content: await aB64Puro(await fotoVitrina(f.blobMarca || f.blob)), encoding: 'base64' });
+          cambios.push({ path: ruta, mode: '100644', type: 'blob', sha: blob.sha });
+        }
+      }
+      publicas.push({
+        id: p.id, titulo: p.titulo, tipo: p.tipo, operacion: p.operacion, estado: estadoDe(p), comuna: p.comuna || '',
+        ubicacion: p.ubicacionPublica || '', precio: p.precio || '', moneda: p.moneda, m2util: p.m2util || '', m2total: p.m2total || '',
+        dorm: p.dorm || '', banos: p.banos || '', estac: p.estac || '', bodega: p.bodega || '', gastosComunes: p.gastosComunes || '',
+        descripcion: p.descripcion || '', fotos: rutas
+      });
+    }
+    // Quita de la vitrina las fotos que ya no se usan.
+    existentes.forEach(r => { if (!usadas.has(r)) cambios.push({ path: r, mode: '100644', type: 'blob', sha: null }); });
+    const datos = { actualizado: new Date().toISOString(), contacto: { nombre: cfg.corredora, telefono: cfg.telefono, email: cfg.email }, propiedades: publicas };
+    cambios.push({ path: 'vitrina/datos/propiedades.json', mode: '100644', type: 'blob', content: JSON.stringify(datos, null, 1) });
+    boton.textContent = 'Publicando…';
+    const nuevoArbol = await api(token, 'git/trees', 'POST', { base_tree: commit.tree.sha, tree: cambios });
+    const nuevo = await api(token, 'git/commits', 'POST', { message: `Vitrina: ${publicas.length} propiedad(es)`, tree: nuevoArbol.sha, parents: [padre] });
+    await api(token, 'git/refs/heads/main', 'PATCH', { sha: nuevo.sha });
+    alert(`¡Listo! ${publicas.length} propiedad(es) publicadas. La vitrina se actualiza en 1 a 2 minutos.`);
+  } catch (e) {
+    alert(e.status === 401 || e.status === 403 || e.status === 404
+      ? 'GitHub rechazó la llave. Revisa que esté bien copiada, que no haya vencido y que tenga permiso de "Contents: Read and write" en el repositorio k-propiedades-app.'
+      : 'No se pudo publicar. Revisa la conexión e inténtalo de nuevo.');
+  } finally { boton.disabled = false; boton.textContent = textoOriginal; }
+}
 
 const aB64 = b => new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(b); });
 const deB64 = async s => (await fetch(s)).blob();
@@ -582,7 +738,7 @@ async function exportar() {
     if (m.blobMarca) m.blobMarca = await aB64(m.blobMarca);
   }
   const data = { app: 'kpropiedades', version: 1, fecha: new Date().toISOString(),
-    props: await todos('props'), personas: await todos('personas'), ajustes: await todos('ajustes'), media };
+    props: await todos('props'), personas: await todos('personas'), ajustes: (await todos('ajustes')).filter(a => a.k !== 'github'), media };
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   const nombre = `respaldo_K_Propiedades_${new Date().toISOString().slice(0, 10)}.json`;
   const file = new File([blob], nombre, { type: 'application/json' });

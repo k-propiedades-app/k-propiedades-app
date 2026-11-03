@@ -95,3 +95,19 @@ label { display: block; font-size: 13px; color: var(--gris); margin: 12px 0 4px;
 .visor .pie .btn { flex: 1; }
 .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 15px; color: var(--tinta); }
 .check input { width: 20px; height: 20px; accent-color: var(--oro); }
+.chip.verde { background: #dff3e4; color: #1d5e30; }
+.chip.amarillo { background: #fdf0c9; color: #7a5a00; }
+.chip.azul { background: #dde8f8; color: #1f4b8a; }
+.chip.estrella { background: #fff4cc; color: #7a5a00; font-weight: 600; border: 1px solid #e8c95a; }
+@media (prefers-color-scheme: dark) {
+  .chip.verde { background: #1e3a26; color: #a6e0b5; }
+  .chip.amarillo { background: #3d3214; color: #f3d97c; }
+  .chip.azul { background: #1d2c44; color: #a9c5f0; }
+  .chip.estrella { background: #3d3214; color: #f3d97c; }
+}
+.estados { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 12px; background: var(--fondo); border: 1px solid var(--linea); border-radius: 10px; padding: 3px; }
+.estados button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--tinta); padding: 8px 2px; border-radius: 8px; }
+.estados button.activo { background: var(--oro); color: #fff; font-weight: 600; }
+.resumen { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--gris); margin: -4px 0 12px; }
+.resumen b { color: var(--tinta); }
+.postventa { border-color: #e8c95a; }
