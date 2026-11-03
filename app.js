@@ -153,11 +153,11 @@ function fab(fn) {
 
 // ---------- Propiedades ----------
 const TIPOS = ['Departamento', 'Casa', 'Oficina', 'Local comercial', 'Terreno', 'Parcela', 'Bodega', 'Estacionamiento'];
-const ESTADOS = ['Disponible', 'Negociando', 'Arrendada', 'Vendida'];
-const ESTADO_ANTIGUO = { 'Captación': 'Disponible', 'Publicada': 'Disponible', 'Pausada': 'Disponible', 'Reservada': 'Negociando' };
-const estadoDe = p => ESTADO_ANTIGUO[p.estado] || (ESTADOS.includes(p.estado) ? p.estado : 'Disponible');
+const ESTADOS = ['Captar', 'Captada', 'Disponible', 'Negociando', 'Arrendada', 'Vendida'];
+const ESTADO_ANTIGUO = { 'Captación': 'Captar', 'Publicada': 'Disponible', 'Pausada': 'Disponible', 'Reservada': 'Negociando' };
+const estadoDe = p => ESTADO_ANTIGUO[p.estado] || (ESTADOS.includes(p.estado) ? p.estado : 'Captar');
 const cerrada = p => ['Arrendada', 'Vendida'].includes(estadoDe(p));
-const enVitrina = p => p.vitrina !== '' && !cerrada(p);
+const enVitrina = p => p.vitrina !== '' && ['Disponible', 'Negociando'].includes(estadoDe(p));
 // Tareas de postventa (post atención) una vez arrendada o vendida.
 const POSTVENTA = {
   Arrendada: ['Contrato firmado y copias entregadas', 'Acta de toma de razón firmada (medidores con foto)', 'Entrega de llaves',
@@ -173,7 +173,7 @@ function postventaDe(p) {
 }
 function chipEstado(p) {
   const e = estadoDe(p), pv = postventaDe(p);
-  const color = { Disponible: 'verde', Negociando: 'amarillo', Arrendada: 'azul', Vendida: 'azul' }[e];
+  const color = { Captar: 'gris', Captada: 'morado', Disponible: 'verde', Negociando: 'amarillo', Arrendada: 'azul', Vendida: 'azul' }[e];
   let s = `<span class="chip ${color}">${e}</span>`;
   if (cerrada(p)) s += pv.pendiente ? `<span class="chip estrella">⭐ Postventa ${pv.hechas}/${pv.tareas.length}</span>` : '<span class="chip">✅ Postventa lista</span>';
   return s;
@@ -212,7 +212,7 @@ VISTAS.propiedades = async (main) => {
 };
 
 VISTAS.editarProp = async (main, { id }) => {
-  const p = id ? await uno('props', id) : { id: nuevoId(), creado: Date.now(), tipo: 'Departamento', operacion: 'Arriendo', estado: 'Disponible', moneda: 'CLP', vitrina: 'si' };
+  const p = id ? await uno('props', id) : { id: nuevoId(), creado: Date.now(), tipo: 'Departamento', operacion: 'Arriendo', estado: 'Captar', moneda: 'CLP', vitrina: 'si' };
   p.estado = estadoDe(p);
   const estadoAntes = p.estado;
   const personas = (await todos('personas')).sort((a, b) => a.nombre.localeCompare(b.nombre));

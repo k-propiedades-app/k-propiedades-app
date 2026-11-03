@@ -105,9 +105,15 @@ label { display: block; font-size: 13px; color: var(--gris); margin: 12px 0 4px;
   .chip.azul { background: #1d2c44; color: #a9c5f0; }
   .chip.estrella { background: #3d3214; color: #f3d97c; }
 }
-.estados { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 12px; background: var(--fondo); border: 1px solid var(--linea); border-radius: 10px; padding: 3px; }
+.estados { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 12px; background: var(--fondo); border: 1px solid var(--linea); border-radius: 10px; padding: 3px; }
 .estados button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--tinta); padding: 8px 2px; border-radius: 8px; }
 .estados button.activo { background: var(--oro); color: #fff; font-weight: 600; }
 .resumen { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--gris); margin: -4px 0 12px; }
 .resumen b { color: var(--tinta); }
 .postventa { border-color: #e8c95a; }
+.chip.gris { background: #ecebe8; color: #4d4943; }
+.chip.morado { background: #ece3f7; color: #5b3a87; }
+@media (prefers-color-scheme: dark) {
+  .chip.gris { background: #34302b; color: #d6d0c7; }
+  .chip.morado { background: #33284a; color: #cdb8ee; }
+}

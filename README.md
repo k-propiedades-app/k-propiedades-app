@@ -4,7 +4,7 @@ App web instalable (PWA) y open source para guardar y ver desde el celular las p
 
 ## Qué hace
 - **Propiedades**: datos (rol, m², precio en CLP o UF, gastos comunes, contribuciones), búsqueda y filtro.
-- **Estado del proceso**: Disponible, Negociando, Arrendada o Vendida. Al arrendar o vender aparece una ⭐ de **postventa** con su lista de pasos; la estrella se quita cuando todos están listos.
+- **Estado del proceso**: Captar, Captada, Disponible, Negociando, Arrendada o Vendida. Solo Disponible y Negociando aparecen en la vitrina. Al arrendar o vender aparece una ⭐ de **postventa** con su lista de pasos; la estrella se quita cuando todos están listos.
 - **Fotos**: desde la cámara o la galería. Al agregarlas crea sola la versión con el logo abajo a la derecha.
 - **Videos**: grabados o desde la galería, listos para compartir a Instagram, Facebook, TikTok o WhatsApp. El logo se agrega como sticker al publicar (descargable en la app).
 - **Documentos**: actas de toma de razón, fotos de medidores, contratos, promesas, órdenes de corretaje (fotos o PDF).
