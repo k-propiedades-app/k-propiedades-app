@@ -117,3 +117,6 @@ label { display: block; font-size: 13px; color: var(--gris); margin: 12px 0 4px;
   .chip.gris { background: #34302b; color: #d6d0c7; }
   .chip.morado { background: #33284a; color: #cdb8ee; }
 }
+.captacion { border-color: #c9b6ea; }
+[hidden] { display: none !important; }
+.check input { flex: none; }

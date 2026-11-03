@@ -166,6 +166,15 @@ const POSTVENTA = {
   Vendida: ['Promesa firmada', 'Escritura firmada en notaría', 'Inscripción en el Conservador', 'Entrega de la propiedad y acta',
     'Cambio de titular de servicios (agua, luz, gas)', 'Llamada de seguimiento al mes', 'Pedir recomendación o reseña']
 };
+// Pasos de captación: al completarlos la propiedad queda lista para pasar a Disponible.
+const CAPTACION = ['Visita en terreno realizada', 'Propietario y dominio vigente confirmados',
+  'Cruce con datainmobiliaria.cl (m², contribuciones, valor de mercado)', 'Precio y comisión acordados con el propietario',
+  'Orden de corretaje firmada', 'Fotos y video tomados'];
+const enCaptacion = p => ['Captar', 'Captada'].includes(estadoDe(p));
+function captacionDe(p) {
+  const hechas = CAPTACION.filter(t => (p.captacion || {})[t]).length;
+  return { tareas: CAPTACION, hechas, lista: hechas === CAPTACION.length };
+}
 function postventaDe(p) {
   const tareas = POSTVENTA[estadoDe(p)] || [];
   const hechas = tareas.filter(t => (p.postventa || {})[t]).length;
@@ -175,6 +184,7 @@ function chipEstado(p) {
   const e = estadoDe(p), pv = postventaDe(p);
   const color = { Captar: 'gris', Captada: 'morado', Disponible: 'verde', Negociando: 'amarillo', Arrendada: 'azul', Vendida: 'azul' }[e];
   let s = `<span class="chip ${color}">${e}</span>`;
+  if (enCaptacion(p)) { const c = captacionDe(p); s += `<span class="chip">${c.lista ? '✅ Lista para disponible' : `📋 Captación ${c.hechas}/${c.tareas.length}`}</span>`; }
   if (cerrada(p)) s += pv.pendiente ? `<span class="chip estrella">⭐ Postventa ${pv.hechas}/${pv.tareas.length}</span>` : '<span class="chip">✅ Postventa lista</span>';
   return s;
 }
@@ -293,6 +303,16 @@ VISTAS.propiedad = async (main, { id }) => {
       ${p.notas ? `<p class="sub" style="white-space:pre-wrap">📝 ${esc(p.notas)}</p>` : ''}
     </div>
 
+    ${enCaptacion(p) ? (() => {
+      const c = captacionDe(p);
+      return `<div class="seccion captacion">
+      <h2>📋 Captación (${c.hechas}/${c.tareas.length})</h2>
+      <p class="sub" style="margin-top:0">Pasos antes de ofrecerla. Al completarlos puedes pasarla a Disponible.</p>
+      ${c.tareas.map(t => `<label class="check"><input type="checkbox" data-capt="${esc(t)}" ${(p.captacion || {})[t] ? 'checked' : ''}> ${esc(t)}</label>`).join('')}
+      <button class="btn ancho" id="aDisponible" ${c.lista ? '' : 'hidden'}>✅ Pasar a Disponible</button>
+    </div>`;
+    })() : ''}
+
     ${cerrada(p) ? (() => {
       const pv = postventaDe(p);
       return `<div class="seccion postventa">
@@ -344,6 +364,18 @@ VISTAS.propiedad = async (main, { id }) => {
     aviso(cerrada(p) ? `¡${nuevo}! Se activó la postventa ⭐` : `Estado: ${nuevo}`);
     pintar();
   });
+  main.querySelectorAll('[data-capt]').forEach(ch => ch.onchange = async () => {
+    p.captacion = Object.assign({}, p.captacion, { [ch.dataset.capt]: ch.checked ? new Date().toISOString().slice(0, 10) : '' });
+    p.actualizado = Date.now();
+    if (ch.checked && ch.dataset.capt === 'Orden de corretaje firmada' && estadoDe(p) === 'Captar') { p.estado = 'Captada'; aviso('Estado: Captada'); }
+    await guardar('props', p);
+    const c = captacionDe(p);
+    main.querySelector('.captacion h2').textContent = `📋 Captación (${c.hechas}/${c.tareas.length})`;
+    $('#aDisponible').hidden = !c.lista;
+    $('#chipsEstado').innerHTML = chipEstado(p);
+    main.querySelectorAll('[data-estado]').forEach(b => b.classList.toggle('activo', b.dataset.estado === estadoDe(p)));
+  });
+  if ($('#aDisponible')) $('#aDisponible').onclick = () => main.querySelector('[data-estado="Disponible"]').click();
   main.querySelectorAll('[data-tarea]').forEach(c => c.onchange = async () => {
     p.postventa = Object.assign({}, p.postventa, { [c.dataset.tarea]: c.checked ? new Date().toISOString().slice(0, 10) : '' });
     await guardar('props', p);
