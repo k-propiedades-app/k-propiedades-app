@@ -120,3 +120,4 @@ label { display: block; font-size: 13px; color: var(--gris); margin: 12px 0 4px;
 .captacion { border-color: #c9b6ea; }
 [hidden] { display: none !important; }
 .check input { flex: none; }
+.galeria .portada { position: absolute; left: 4px; bottom: 4px; font-size: 10px; background: var(--oro); color: #fff; padding: 1px 6px; border-radius: 4px; }

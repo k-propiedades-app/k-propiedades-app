@@ -91,10 +91,17 @@
   'use strict';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let datos = { propiedades: [], contacto: {} }, op = '';
-  const precio = p => !p.precio ? 'Consultar' : (p.moneda === 'UF' ? 'UF ' : '$') + Number(p.precio).toLocaleString('es-CL') + (p.operacion === 'Arriendo' && p.moneda !== 'UF' ? ' /mes' : '');
+  // Acepta números como 110000, "110.000" o "5.200,5".
+  const num = v => {
+    if (v == null || v === '') return 0;
+    if (typeof v === 'number') return v;
+    const t = String(v).trim().replace(/\s|\$|UF/gi, '');
+    return Number(/,\d{1,2}$/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t.replace(/[.,]/g, '')) || 0;
+  };
+  const precio = p => !num(p.precio) ? 'Consultar' : (p.moneda === 'UF' ? 'UF ' : '$') + num(p.precio).toLocaleString('es-CL') + (p.operacion === 'Arriendo' && p.moneda !== 'UF' ? ' /mes' : '');
   const wa = t => { let d = String(t || '').replace(/\D/g, ''); if (d.length === 9 && d[0] === '9') d = '56' + d; return d; };
   const linkWa = (msg) => `https://wa.me/${wa(datos.contacto.telefono)}?text=${encodeURIComponent(msg)}`;
-  const meta = p => [p.m2util && `${p.m2util} m²`, p.dorm && `${p.dorm} dorm.`, p.banos && `${p.banos} baño${p.banos > 1 ? 's' : ''}`, Number(p.estac) && `${p.estac} estac.`].filter(Boolean);
+  const meta = p => [(p.m2util || p.m2total) && `${p.m2util || p.m2total} m²`, p.dorm && `${p.dorm} dorm.`, p.banos && `${p.banos} baño${p.banos > 1 ? 's' : ''}`, Number(p.estac) && `${p.estac} estac.`].filter(Boolean);
 
   function contacto() {
     const c = datos.contacto;
@@ -123,7 +130,7 @@
     document.title = `${p.titulo} · K Propiedades`;
     const ficha = [['Precio', precio(p)], ['Operación', p.operacion], ['Tipo', p.tipo], ['Comuna', p.comuna], ['m² útiles', p.m2util], ['m² totales', p.m2total],
       ['Dormitorios', p.dorm], ['Baños', p.banos], ['Estacionam.', Number(p.estac) ? p.estac : ''], ['Bodegas', Number(p.bodega) ? p.bodega : ''],
-      ['Gastos comunes', p.gastosComunes && '$' + Number(p.gastosComunes).toLocaleString('es-CL')]].filter(f => f[1]);
+      ['Gastos comunes', num(p.gastosComunes) && '$' + num(p.gastosComunes).toLocaleString('es-CL')]].filter(f => f[1]);
     const d = document.createElement('div'); d.className = 'det';
     d.innerHTML = `<div class="barra"><button id="cerrar">‹ Volver</button><button id="compartir">Compartir ↗</button></div>
       ${p.fotos.length ? `<div class="carrusel" id="car">${p.fotos.map((f, i) => `<img src="${esc(f)}" alt="Foto ${i + 1} de ${esc(p.titulo)}" loading="${i ? 'lazy' : 'eager'}">`).join('')}</div>

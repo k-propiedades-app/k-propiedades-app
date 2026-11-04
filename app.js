@@ -56,9 +56,17 @@ function aviso(txt) {
   const a = $('#aviso'); a.textContent = txt; a.hidden = false;
   clearTimeout(aviso.t); aviso.t = setTimeout(() => (a.hidden = true), 2600);
 }
+// Convierte "110.000" o "5.200,5" (formato chileno) a número.
+function num(v) {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
+  const t = String(v).trim().replace(/\s|\$|UF/gi, '');
+  return Number(/,\d{1,2}$/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t.replace(/[.,]/g, '')) || 0;
+}
+const plata = v => '$' + num(v).toLocaleString('es-CL');
 function precioTxt(p) {
-  if (!p.precio) return '';
-  const n = Number(p.precio).toLocaleString('es-CL');
+  if (!num(p.precio)) return '';
+  const n = num(p.precio).toLocaleString('es-CL');
   return p.moneda === 'UF' ? `UF ${n}` : `$${n}`;
 }
 function telWhatsapp(t) {
@@ -175,6 +183,10 @@ function captacionDe(p) {
   const hechas = CAPTACION.filter(t => (p.captacion || {})[t]).length;
   return { tareas: CAPTACION, hechas, lista: hechas === CAPTACION.length };
 }
+// Foto de portada: la elegida o, si no hay, la primera.
+function portadaDe(p, fotos) {
+  return fotos.find(f => f.id === p.portada) || [...fotos].sort((a, b) => a.creado - b.creado)[0];
+}
 // Registra fechas útiles para el newsletter cuando cambia el estado.
 function marcarCambioEstado(p, antes) {
   const hoy = new Date().toISOString().slice(0, 10);
@@ -215,7 +227,7 @@ VISTAS.propiedades = async (main) => {
       [p.titulo, p.direccion, p.comuna, p.rol, p.tipo].join(' ').toLowerCase().includes(q));
     $('#lista').innerHTML = vis.length ? '' : `<p class="vacio">${props.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay propiedades.<br>Toca + para agregar la primera.'}</p>`;
     vis.forEach(p => {
-      const foto = fotos.find(m => m.propId === p.id);
+      const foto = portadaDe(p, fotos.filter(m => m.propId === p.id));
       const b = document.createElement('button'); b.className = 'tarjeta';
       b.innerHTML = `${foto ? `<img src="${url(foto.blob)}" alt="">` : '<div class="sinfoto">🏠</div>'}
         <div class="info"><h3>${esc(p.titulo || p.tipo)}</h3>
@@ -247,12 +259,12 @@ VISTAS.editarProp = async (main, { id }) => {
     ${campo('direccion', 'Dirección (privada, no sale en la vitrina)')}
     ${campo('ubicacionPublica', 'Ubicación para la vitrina (ej. a pasos de metro Ñuble)')}
     <div class="fila"><div>${campo('comuna', 'Comuna')}</div><div>${campo('rol', 'Rol SII')}</div></div>
-    <div class="fila"><div>${campo('precio', 'Precio', 'number', 'inputmode="decimal" step="any"')}</div>
+    <div class="fila"><div>${campo('precio', 'Precio', 'text', 'inputmode="decimal" placeholder="ej. 105.000.000"')}</div>
       <div><label>Moneda</label><select name="moneda">${opt(['CLP', 'UF'], p.moneda)}</select></div></div>
     <div class="fila"><div>${campo('m2util', 'm² útiles', 'number', 'step="any"')}</div><div>${campo('m2total', 'm² totales', 'number', 'step="any"')}</div></div>
     <div class="fila"><div>${campo('dorm', 'Dormitorios', 'number')}</div><div>${campo('banos', 'Baños', 'number')}</div></div>
     <div class="fila"><div>${campo('estac', 'Estacionamientos', 'number')}</div><div>${campo('bodega', 'Bodegas', 'number')}</div></div>
-    <div class="fila"><div>${campo('gastosComunes', 'Gastos comunes ($)', 'number')}</div><div>${campo('contribuciones', 'Contribuciones ($/trim.)', 'number')}</div></div>
+    <div class="fila"><div>${campo('gastosComunes', 'Gastos comunes ($)', 'text', 'inputmode="decimal"')}</div><div>${campo('contribuciones', 'Contribuciones ($/trim.)', 'text', 'inputmode="decimal"')}</div></div>
     <label>Propietario</label><select name="propietarioId"><option value="">— Sin asignar —</option>
       ${personas.map(x => `<option value="${x.id}" ${x.id === p.propietarioId ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select>
     <label>Descripción para el aviso (se publica)</label><textarea name="descripcion">${esc(p.descripcion)}</textarea>
@@ -265,7 +277,7 @@ VISTAS.editarProp = async (main, { id }) => {
     Object.assign(p, { vitrina: '' }, Object.fromEntries(new FormData(e.target)));
     p.titulo = p.titulo || `${p.tipo} ${p.comuna || ''}`.trim();
     marcarCambioEstado(p, estadoAntes);
-    if (precioAntes && p.precio && Number(p.precio) < Number(precioAntes)) {
+    if (precioAntes && p.precio && num(p.precio) < num(precioAntes)) {
       p.precioAnterior = precioAntes; p.fechaBajaPrecio = new Date().toISOString().slice(0, 10);
     }
     p.actualizado = Date.now();
@@ -309,8 +321,8 @@ VISTAS.propiedad = async (main, { id }) => {
         ${fila(estadoDe(p) === 'Vendida' ? 'Vendida el' : 'Arrendada el', cerrada(p) && p.fechaCierre ? new Date(p.fechaCierre + 'T12:00').toLocaleDateString('es-CL') : '')}
         ${fila('m² útiles', p.m2util)}${fila('m² totales', p.m2total)}${fila('Dormitorios', p.dorm)}${fila('Baños', p.banos)}
         ${fila('Estacionam.', p.estac)}${fila('Bodegas', p.bodega)}
-        ${fila('Gastos com.', p.gastosComunes && '$' + Number(p.gastosComunes).toLocaleString('es-CL'))}
-        ${fila('Contribuc.', p.contribuciones && '$' + Number(p.contribuciones).toLocaleString('es-CL'))}
+        ${fila('Gastos com.', num(p.gastosComunes) && plata(p.gastosComunes))}
+        ${fila('Contribuc.', num(p.contribuciones) && plata(p.contribuciones))}
       </dl>
       ${p.notas ? `<p class="sub" style="white-space:pre-wrap">📝 ${esc(p.notas)}</p>` : ''}
     </div>
@@ -340,6 +352,7 @@ VISTAS.propiedad = async (main, { id }) => {
       <div class="acciones">
         <button class="btn" id="compartir">📤 Compartir aviso</button>
         <button class="btn sec" id="copiar">📋 Copiar texto</button>
+        <button class="btn sec" id="pubFicha">🚀 Publicar en vitrina</button>
         <a class="btn sec" href="sticker.png" download="K_Propiedades_sticker.png">🏷️ Sticker del logo</a>
       </div>
     </div>
@@ -410,7 +423,7 @@ VISTAS.propiedad = async (main, { id }) => {
     fotos.forEach(f => {
       const d = document.createElement('div'); d.className = 'item';
       d.innerHTML = `<img src="${url(conMarca ? f.blobMarca || f.blob : f.blob)}" alt="" loading="lazy">
-        ${conMarca && f.blobMarca ? '<span class="marca">con marca</span>' : ''}
+        ${conMarca && f.blobMarca ? '<span class="marca">con marca</span>' : ''}${portadaDe(p, fotos) === f ? '<span class="portada">★ Portada</span>' : ''}
         <input type="checkbox" class="sel" ${seleccion.has(f.id) ? 'checked' : ''} aria-label="Seleccionar">`;
       d.querySelector('.sel').onchange = e => { e.target.checked ? seleccion.add(f.id) : seleccion.delete(f.id); };
       d.querySelector('img').onclick = () => visor(f, 'foto');
@@ -423,12 +436,18 @@ VISTAS.propiedad = async (main, { id }) => {
     const files = await elegirArchivos({ accept: 'image/*', capture, multiple: !capture });
     if (!files.length) return;
     aviso(`Procesando ${files.length} foto(s)…`);
+    let fallidas = 0;
     for (const file of files) {
-      const blob = await procesarFoto(file, false);
-      const blobMarca = cfg.marcaAuto ? await procesarFoto(file, true) : null;
-      await guardar('media', { id: nuevoId(), propId: id, kind: 'foto', name: file.name, blob, blobMarca, creado: Date.now() });
+      try {
+        const blob = await procesarFoto(file, false);
+        const blobMarca = cfg.marcaAuto ? await procesarFoto(file, true) : null;
+        if (!blob) throw new Error('foto vacía');
+        await guardar('media', { id: nuevoId(), propId: id, kind: 'foto', name: file.name, blob, blobMarca, creado: Date.now() });
+      } catch (e) { fallidas++; }
     }
-    aviso('Fotos guardadas'); pintar();
+    if (fallidas) alert(`${fallidas} foto(s) no se pudieron leer. Prueba con otra foto o en formato JPG.`);
+    else aviso('Fotos guardadas');
+    pintar();
   };
   $('#addFoto').onclick = () => agregarFotos(false);
   $('#camara').onclick = () => agregarFotos(true);
@@ -471,6 +490,7 @@ VISTAS.propiedad = async (main, { id }) => {
   // Publicar
   const texto = () => textoAviso(p, cfg);
   $('#copiar').onclick = async () => { await copiar(texto()); };
+  $('#pubFicha').onclick = e => publicarVitrina(e.target);
   $('#compartir').onclick = async () => {
     const elegidas = seleccion.size ? fotos.filter(f => seleccion.has(f.id)) : fotos;
     const base = (p.titulo || 'propiedad').replace(/[^\w]+/g, '_');
@@ -487,7 +507,7 @@ function textoAviso(p, cfg) {
   if (m) l.push(`📐 ${m}`);
   const c = [p.dorm && `${p.dorm} dorm.`, p.banos && `${p.banos} baño(s)`, Number(p.estac) && `${p.estac} estac.`, Number(p.bodega) && `${p.bodega} bodega`].filter(Boolean).join(' · ');
   if (c) l.push(`🛏️ ${c}`);
-  if (p.gastosComunes) l.push(`🧾 Gastos comunes aprox. $${Number(p.gastosComunes).toLocaleString('es-CL')}`);
+  if (num(p.gastosComunes)) l.push(`🧾 Gastos comunes aprox. ${plata(p.gastosComunes)}`);
   if (p.descripcion) l.push('', p.descripcion);
   l.push('', `📲 ${cfg.corredora}${cfg.telefono ? ' · ' + cfg.telefono : ''}${cfg.email ? ' · ' + cfg.email : ''}`);
   const tags = [cfg.hashtags, p.comuna && '#' + p.comuna.replace(/\s+/g, ''), '#' + (p.operacion === 'Venta' ? 'venta' : 'arriendo')].filter(Boolean).join(' ');
@@ -534,6 +554,7 @@ function visor(m, tipo) {
   else cuerpo = `<div style="color:#fff;text-align:center">📄<br>${esc(m.name)}</div>`;
   v.innerHTML = `<div class="cuerpo">${cuerpo}</div><div class="pie">
     <button class="btn sec" data-a="cerrar">Cerrar</button>
+    ${tipo === 'foto' ? '<button class="btn sec" data-a="portada">★ Portada</button>' : ''}
     ${tipo === 'foto' && m.blobMarca ? '<button class="btn sec" data-a="sin">Compartir sin marca</button>' : ''}
     ${tipo === 'doc' && !(m.type || '').startsWith('image/') ? '<button class="btn sec" data-a="abrir">Abrir</button>' : ''}
     <button class="btn" data-a="compartir">Compartir</button>
@@ -545,6 +566,12 @@ function visor(m, tipo) {
     const a = e.target.dataset.a;
     if (!a) return;
     if (a === 'cerrar') v.remove();
+    if (a === 'portada') {
+      const p = await uno('props', m.propId);
+      p.portada = m.id; p.actualizado = Date.now();
+      await guardar('props', p);
+      v.remove(); aviso('Foto de portada elegida. Publica la vitrina para verla ahí.'); pintar();
+    }
     if (a === 'compartir') await compartir([archivo(blob)], '');
     if (a === 'sin') await compartir([archivo(m.blob, '_sin_marca')], '');
     if (a === 'abrir') window.open(url(m.blob), '_blank');
@@ -555,7 +582,7 @@ function visor(m, tipo) {
 // ---------- Newsletter ----------
 function lineaProp(p, conLink = true, extra = '') {
   const datos = [precioTxt(p) && precioTxt(p) + (p.operacion === 'Arriendo' && p.moneda !== 'UF' ? '/mes' : ''),
-    p.m2util && `${p.m2util} m²`, p.dorm && `${p.dorm}D`, p.banos && `${p.banos}B`].filter(Boolean).join(' · ');
+    (p.m2util || p.m2total) && `${p.m2util || p.m2total} m²`, p.dorm && `${p.dorm}D`, p.banos && `${p.banos}B`].filter(Boolean).join(' · ');
   return `• ${p.tipo} en ${p.operacion.toLowerCase()}${p.comuna ? ', ' + p.comuna : ''}${datos ? ' · ' + datos : ''}` +
     extra + (conLink ? `\n  👉 ${URL_VITRINA}#p=${p.id}` : '');
 }
@@ -573,7 +600,7 @@ function textoNewsletter(props, dias, cfg) {
     '¡Hola! Te compartimos las novedades de nuestra cartera de propiedades.'];
   if (nuevas.length) l.push('', '🆕 Nuevas propiedades', ...nuevas.map(p => lineaProp(p)));
   if (bajas.length) l.push('', '📉 Bajaron de precio', ...bajas.map(p => lineaProp(p, true,
-    ` (antes ${p.moneda === 'UF' ? 'UF ' : '$'}${Number(p.precioAnterior).toLocaleString('es-CL')})`)));
+    ` (antes ${p.moneda === 'UF' ? 'UF ' : '$'}${num(p.precioAnterior).toLocaleString('es-CL')})`)));
   if (cerradas.length) l.push('', '🔑 Arrendadas y vendidas', ...cerradas.map(p =>
     `• ${p.tipo}${p.comuna ? ' en ' + p.comuna : ''}: ¡${estadoDe(p).toLowerCase().slice(0, -1)}${['Casa', 'Oficina', 'Parcela', 'Bodega'].includes(p.tipo) ? 'a' : 'o'}! Gracias por confiar en nosotros.`));
   if (otras.length) l.push('', '🏠 También disponibles', ...otras.slice(0, 8).map(p => lineaProp(p)));
@@ -803,7 +830,9 @@ async function publicarVitrina(boton) {
     const publicas = [];
     let n = 0;
     for (const p of props) {
-      const fotos = (await mediaDe(p.id)).filter(m => m.kind === 'foto').sort((a, b) => a.creado - b.creado).slice(0, 12);
+      const todas = (await mediaDe(p.id)).filter(m => m.kind === 'foto').sort((a, b) => a.creado - b.creado);
+      const tapa = portadaDe(p, todas);
+      const fotos = (tapa ? [tapa, ...todas.filter(f => f !== tapa)] : todas).slice(0, 12);
       const rutas = [];
       for (const f of fotos) {
         const ruta = `vitrina/datos/fotos/${f.id}.jpg`;
@@ -816,8 +845,8 @@ async function publicarVitrina(boton) {
       }
       publicas.push({
         id: p.id, titulo: p.titulo, tipo: p.tipo, operacion: p.operacion, estado: estadoDe(p), comuna: p.comuna || '',
-        ubicacion: p.ubicacionPublica || '', precio: p.precio || '', moneda: p.moneda, m2util: p.m2util || '', m2total: p.m2total || '',
-        dorm: p.dorm || '', banos: p.banos || '', estac: p.estac || '', bodega: p.bodega || '', gastosComunes: p.gastosComunes || '',
+        ubicacion: p.ubicacionPublica || '', precio: num(p.precio) || '', moneda: p.moneda, m2util: p.m2util || '', m2total: p.m2total || '',
+        dorm: p.dorm || '', banos: p.banos || '', estac: p.estac || '', bodega: p.bodega || '', gastosComunes: num(p.gastosComunes) || '',
         descripcion: p.descripcion || '', fotos: rutas
       });
     }
