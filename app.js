@@ -198,7 +198,7 @@ function fab(fn) {
 }
 
 // ---------- Propiedades ----------
-const TIPOS = ['Departamento', 'Casa', 'Campo', 'Parcela', 'Sitio', 'Bodega', 'Local comercial'];
+const TIPOS = ['Departamento', 'Casa', 'Campo', 'Parcela', 'Sitio', 'Bodega', 'Local comercial', 'Oficina', 'Estacionamiento'];
 const ESTADOS = ['Captar', 'Captada', 'Disponible', 'Negociando', 'Arrendada', 'Vendida'];
 const ESTADO_ANTIGUO = { 'Captación': 'Captar', 'Publicada': 'Disponible', 'Pausada': 'Disponible', 'Reservada': 'Negociando' };
 const estadoDe = p => ESTADO_ANTIGUO[p.estado] || (ESTADOS.includes(p.estado) ? p.estado : 'Captar');
