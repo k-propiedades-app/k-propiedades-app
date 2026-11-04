@@ -42,6 +42,15 @@ const REGIONES = [
   ['Magallanes', ['Antártica', 'Cabo de Hornos', 'Laguna Blanca', 'Natales', 'Porvenir', 'Primavera', 'Punta Arenas', 'Río Verde',
     'San Gregorio', 'Timaukel', 'Torres del Paine']]
 ];
+// Nombre oficial con número romano, para mostrar en los selectores.
+const REGION_NOMBRE = {
+  'Arica y Parinacota': 'Región de Arica y Parinacota (XV)', 'Tarapacá': 'Región de Tarapacá (I)', 'Antofagasta': 'Región de Antofagasta (II)',
+  'Atacama': 'Región de Atacama (III)', 'Coquimbo': 'Región de Coquimbo (IV)', 'Valparaíso': 'Región de Valparaíso (V)',
+  'Metropolitana de Santiago': 'Región Metropolitana de Santiago (RM)', "O'Higgins": "Región del Libertador General Bernardo O'Higgins (VI)",
+  'Maule': 'Región del Maule (VII)', 'Ñuble': 'Región de Ñuble (XVI)', 'Biobío': 'Región del Biobío (VIII)',
+  'La Araucanía': 'Región de La Araucanía (IX)', 'Los Ríos': 'Región de Los Ríos (XIV)', 'Los Lagos': 'Región de Los Lagos (X)',
+  'Aysén': 'Región de Aysén del General Carlos Ibáñez del Campo (XI)', 'Magallanes': 'Región de Magallanes y de la Antártica Chilena (XII)'
+};
 // Busca la región de una comuna (sin importar mayúsculas ni tildes).
 const sinTilde = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 function regionDe(comuna) {
