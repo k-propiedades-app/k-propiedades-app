@@ -44,6 +44,15 @@
       text-align: left; padding: 0; font: inherit; color: inherit; display: flex; flex-direction: column; }
     .card .foto { aspect-ratio: 4/3; background: var(--oro-claro) center/cover no-repeat; position: relative; }
     .card .foto.sinfoto { background-size: auto 55%; background-color: var(--oro-claro); }
+    .corr-card { padding: 8px 14px 0; font-size: 14px; font-weight: 600; }
+    .corr-card small { color: var(--gris); font-weight: 400; }
+    .corr-det { display: flex; align-items: center; gap: 12px; max-width: 900px; margin: 6px auto 0; padding: 12px 16px; background: var(--tarjeta);
+      border-top: 1px solid var(--linea); border-bottom: 1px solid var(--linea); }
+    .corr-av { width: 44px; height: 44px; border-radius: 50%; background: var(--oro); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 18px; flex: none; }
+    .corr-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .corr-txt small { color: var(--gris); font-size: 13px; }
+    .corr-btns { display: flex; gap: 6px; }
+    .corr-btns .btn { padding: 10px 12px; }
     .etq { position: absolute; left: 10px; top: 10px; background: var(--oro); color: #fff; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 99px; }
     .etq.neg { left: auto; right: 10px; background: #1f1a14; }
     .card .cuerpo { padding: 12px 14px 14px; }
@@ -103,7 +112,7 @@
   };
   const precio = p => !num(p.precio) ? 'Consultar' : (p.moneda === 'UF' ? 'UF ' : '$') + num(p.precio).toLocaleString('es-CL') + (p.operacion === 'Arriendo' && p.moneda !== 'UF' ? ' /mes' : '');
   const wa = t => { let d = String(t || '').replace(/\D/g, ''); if (d.length === 9 && d[0] === '9') d = '56' + d; return d; };
-  const linkWa = (msg) => `https://wa.me/${wa(datos.contacto.telefono)}?text=${encodeURIComponent(msg)}`;
+  const linkWa = (msg, tel) => `https://wa.me/${wa(tel || datos.contacto.telefono)}?text=${encodeURIComponent(msg)}`;
   const meta = p => [(p.m2util || p.m2total) && `${p.m2util || p.m2total} m²`, p.dorm && `${p.dorm} dorm.`, p.banos && `${p.banos} baño${p.banos > 1 ? 's' : ''}`, Number(p.estac) && `${p.estac} estac.`].filter(Boolean);
 
   function contacto() {
@@ -122,6 +131,7 @@
     g.innerHTML = vis.map(p => `<button class="card" data-id="${esc(p.id)}">
       <div class="foto${p.fotos[0] ? '' : ' sinfoto'}" style="background-image:url('${p.fotos[0] ? esc(p.fotos[0]) : '../logo.png'}')">
         <span class="etq">${esc(p.operacion)}</span>${p.estado === 'Negociando' ? '<span class="etq neg">En negociación</span>' : ''}</div>
+      ${p.corredor ? `<div class="corr-card">👤 ${esc(p.corredor.nombre)} <small>· Corredor a cargo</small></div>` : ''}
       <div class="cuerpo"><div class="precio">${precio(p)}</div><h2>${esc(p.titulo)}</h2>
       <div class="meta">${[p.comuna, ...meta(p)].filter(Boolean).map(esc).map(x => `<span>${x}</span>`).join('')}</div></div></button>`).join('');
     g.querySelectorAll('.card').forEach(b => b.onclick = () => { location.hash = 'p=' + b.dataset.id; });
@@ -138,6 +148,14 @@
     d.innerHTML = `<div class="barra"><button id="cerrar">‹ Volver</button><button id="compartir">Compartir ↗</button></div>
       ${p.fotos.length ? `<div class="carrusel" id="car">${p.fotos.map((f, i) => `<img src="${esc(f)}" alt="Foto ${i + 1} de ${esc(p.titulo)}" loading="${i ? 'lazy' : 'eager'}">`).join('')}</div>
       <div class="contador" id="cont">1 / ${p.fotos.length} · desliza para ver más</div>` : ''}
+      ${p.corredor ? `<div class="corr-det"><div class="corr-av">${esc(p.corredor.nombre.charAt(0))}</div>
+        <div class="corr-txt"><b>${esc(p.corredor.nombre)}</b><small>Corredor a cargo</small>
+          ${p.corredor.telefono ? `<small>${esc(p.corredor.telefono)}</small>` : ''}</div>
+        <div class="corr-btns">
+          ${p.corredor.telefono ? `<a class="btn wa" target="_blank" rel="noopener" aria-label="WhatsApp" href="${linkWa(`Hola ${p.corredor.nombre}, me interesa "${p.titulo}". ¿Está disponible? ${location.href}`, p.corredor.telefono)}">💬</a>
+          <a class="btn claro" aria-label="Llamar" href="tel:${esc(p.corredor.telefono)}">📞</a>` : ''}
+          ${p.corredor.email ? `<a class="btn claro" aria-label="Correo" href="mailto:${esc(p.corredor.email)}?subject=${encodeURIComponent('Consulta: ' + p.titulo)}">✉️</a>` : ''}
+        </div></div>` : ''}
       <div class="info">
         ${p.estado === 'Negociando' ? '<p style="margin:8px 0 0"><b>⏳ En negociación.</b> Escríbenos para quedar en lista de espera.</p>' : ''}
         <h1>${esc(p.titulo)}</h1>
@@ -146,8 +164,8 @@
         ${p.descripcion ? `<p class="desc">${esc(p.descripcion)}</p>` : ''}
       </div>
       <div class="accion">
-        ${datos.contacto.telefono ? `<a class="btn wa" target="_blank" rel="noopener" href="${linkWa(`Hola, me interesa "${p.titulo}" (${p.operacion}, ${precio(p)}). ¿Está disponible? ${location.href}`)}">💬 Me interesa</a>
-        <a class="btn claro" href="tel:${esc(datos.contacto.telefono)}">📞 Llamar</a>` : ''}
+        ${(p.corredor && p.corredor.telefono) || datos.contacto.telefono ? (tel => `<a class="btn wa" target="_blank" rel="noopener" href="${linkWa(`Hola, me interesa "${p.titulo}" (${p.operacion}, ${precio(p)}). ¿Está disponible? ${location.href}`, tel)}">💬 Me interesa</a>
+        <a class="btn claro" href="tel:${esc(tel)}">📞 Llamar</a>`)((p.corredor && p.corredor.telefono) || datos.contacto.telefono) : ''}
       </div>`;
     document.body.appendChild(d);
     document.body.style.overflow = 'hidden';

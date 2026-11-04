@@ -43,6 +43,11 @@ const AJUSTES_BASE = { corredora: 'K Propiedades', telefono: '+56 9 3499 7313', 
 // Repositorio donde vive la vitrina pública (GitHub Pages).
 const REPO = 'k-propiedades-app/k-propiedades-app';
 const URL_VITRINA = 'https://k-propiedades-app.github.io/k-propiedades-app/vitrina/';
+// Corredores del equipo, con su contacto para la vitrina.
+async function corredores() {
+  const r = await uno('ajustes', 'corredores');
+  return r ? r.v : [{ nombre: 'Karen', telefono: '+56 9 3499 7313', email: 'kliberona.b@gmail.com' }];
+}
 async function ajustes() {
   const r = await uno('ajustes', 'general');
   return Object.assign({}, AJUSTES_BASE, r ? r.v : {});
@@ -302,8 +307,12 @@ VISTAS.editarProp = async (main, { id }) => {
     ${campo('titulo', 'Nombre corto (ej. Depto 2D2B Ñuñoa)')}
     <div class="fila"><div><label>Tipo</label><select name="tipo">${opt(TIPOS.includes(p.tipo) ? TIPOS : [...TIPOS, p.tipo], p.tipo)}</select></div>
       <div><label>Operación</label><select name="operacion">${opt(['Arriendo', 'Venta'], p.operacion)}</select></div></div>
-    <label>Corredor a cargo</label><input name="corredor" list="corredores" value="${esc(p.corredor)}" placeholder="Ej. Karen Liberona">
-    <datalist id="corredores">${[...new Set((await todos('props')).map(x => x.corredor).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <label>Corredor a cargo (se muestra en la vitrina)</label>${await (async () => {
+      const nombres = (await corredores()).map(c => c.nombre);
+      if (p.corredor && !nombres.includes(p.corredor)) nombres.push(p.corredor);
+      return `<select name="corredor"><option value="">— Sin asignar —</option>${nombres.map(n => `<option ${n === p.corredor ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
+    })()}
+    <p class="sub" style="margin:4px 0 0">Los corredores y su contacto se configuran en Ajustes → Corredores.</p>
     <label>Estado del proceso</label><select name="estado">${opt(ESTADOS, p.estado)}</select>
     <label class="check"><input type="checkbox" name="vitrina" value="si" ${p.vitrina !== '' ? 'checked' : ''}> Mostrar en la vitrina pública (solo si está disponible o negociando)</label>
     ${campo('direccion', 'Dirección (privada, no sale en la vitrina)')}
@@ -991,6 +1000,7 @@ VISTAS.ajustes = async (main) => {
   const cfg = await ajustes();
   const gh = await tokenGitHub();
   const ufHoy = await valorUF();
+  const corrs = await corredores();
   let uso = '';
   if (navigator.storage && navigator.storage.estimate) {
     const e = await navigator.storage.estimate();
@@ -1006,6 +1016,12 @@ VISTAS.ajustes = async (main) => {
       <label>Valor UF manual (solo si no carga solo; hoy: ${ufHoy ? '$' + ufHoy.toLocaleString('es-CL') : 'sin dato'})</label><input name="ufManual" inputmode="decimal" placeholder="ej. 39.850,12">
       <label class="check"><input type="checkbox" name="marcaAuto" ${cfg.marcaAuto ? 'checked' : ''}> Crear versión con marca de agua al agregar fotos</label>
       <button class="btn ancho">Guardar</button>
+    </form>
+    <form class="seccion" id="fCorr"><h2>Corredores</h2>
+      <p class="sub" style="margin-top:0">Su nombre, WhatsApp y correo aparecen en la vitrina en las propiedades que tengan a cargo.</p>
+      <div id="listaCorr">${corrs.map((c, i) => filaCorredor(c, i)).join('')}</div>
+      <button type="button" class="btn sec ancho" id="addCorr">+ Agregar corredor</button>
+      <button class="btn ancho">Guardar corredores</button>
     </form>
     <div class="seccion"><h2>Vitrina pública</h2>
       <p class="sub" style="margin-top:0">Página para clientes con las propiedades disponibles o en negociación marcadas "Mostrar en la vitrina". Solo sale información pública: fotos con marca, precio, m², comuna y descripción.</p>
@@ -1035,6 +1051,15 @@ VISTAS.ajustes = async (main) => {
     await guardar('ajustes', { k: 'general', v });
     aviso('Ajustes guardados');
   };
+  $('#addCorr').onclick = () => $('#listaCorr').insertAdjacentHTML('beforeend', filaCorredor({}, $('#listaCorr').children.length));
+  $('#fCorr').onsubmit = async e => {
+    e.preventDefault();
+    const lista = [...$('#listaCorr').children].map(f => ({
+      nombre: f.querySelector('[data-c=nombre]').value.trim(), telefono: f.querySelector('[data-c=telefono]').value.trim(),
+      email: f.querySelector('[data-c=email]').value.trim() })).filter(c => c.nombre);
+    await guardar('ajustes', { k: 'corredores', v: lista });
+    aviso('Corredores guardados. Publica la vitrina para que se vean.');
+  };
   $('#exp').onclick = exportar;
   $('#imp').onclick = importar;
   $('#guardarToken').onclick = async () => {
@@ -1045,6 +1070,13 @@ VISTAS.ajustes = async (main) => {
   };
   $('#pub').onclick = e => publicarVitrina(e.target);
 };
+
+function filaCorredor(c, i) {
+  return `<div class="corr-fila"><b class="sub">Corredor ${i + 1}</b>
+    <input data-c="nombre" placeholder="Nombre" value="${esc(c.nombre)}">
+    <div class="fila"><input data-c="telefono" type="tel" placeholder="WhatsApp (+56 9 …)" value="${esc(c.telefono)}">
+      <input data-c="email" type="email" placeholder="Correo" value="${esc(c.email)}"></div></div>`;
+}
 
 // ---------- Vitrina pública: sube datos y fotos al repositorio en un solo cambio ----------
 async function tokenGitHub() { const r = await uno('ajustes', 'github'); return r ? r.v : ''; }
@@ -1072,6 +1104,7 @@ async function publicarVitrina(boton) {
   if (!token) { alert('Primero guarda la llave de publicación de GitHub (más abajo en Ajustes).'); return; }
   if (!navigator.onLine) { alert('Necesitas conexión a internet para publicar.'); return; }
   const cfg = await ajustes();
+  const corrs = await corredores();
   const props = (await todos('props')).filter(enVitrina).sort((a, b) => (b.actualizado || b.creado) - (a.actualizado || a.creado));
   if (!confirm(`Se publicarán ${props.length} propiedad(es) en la vitrina. ¿Continuar?`)) return;
   const textoOriginal = boton.textContent; boton.disabled = true;
@@ -1103,7 +1136,8 @@ async function publicarVitrina(boton) {
         id: p.id, titulo: p.titulo, tipo: p.tipo, operacion: p.operacion, estado: estadoDe(p), comuna: p.comuna || '',
         ubicacion: p.ubicacionPublica || '', precio: num(p.precio) || '', moneda: p.moneda, m2util: p.m2util || '', m2total: p.m2total || '',
         dorm: p.dorm || '', banos: p.banos || '', estac: p.estac || '', bodega: p.bodega || '', gastosComunes: num(p.gastosComunes) || '',
-        descripcion: p.descripcion || '', fotos: rutas
+        descripcion: p.descripcion || '', fotos: rutas,
+        corredor: (c => c ? { nombre: c.nombre, telefono: c.telefono || '', email: c.email || '' } : null)(corrs.find(c => c.nombre === p.corredor))
       });
     }
     // Quita de la vitrina las fotos que ya no se usan.

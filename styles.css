@@ -139,6 +139,8 @@ label { display: block; font-size: 13px; color: var(--gris); margin: 12px 0 4px;
 .fp-specs small { color: var(--gris); font-size: 11px; }
 .fp-corredor { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--linea); font-size: 14px; }
 .fp-corredor small { color: var(--gris); }
+.corr-fila { padding: 8px 0; border-top: 1px solid var(--linea); }
+.corr-fila input { margin-top: 6px; }
 .chip.codigo { background: var(--tinta); color: var(--fondo); font-variant-numeric: tabular-nums; }
 
 /* ---- Panel ---- */
