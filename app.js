@@ -51,6 +51,13 @@ var REGION_NOMBRE = {
   'La Araucanía': 'Región de La Araucanía (IX)', 'Los Ríos': 'Región de Los Ríos (XIV)', 'Los Lagos': 'Región de Los Lagos (X)',
   'Aysén': 'Región de Aysén del General Carlos Ibáñez del Campo (XI)', 'Magallanes': 'Región de Magallanes y de la Antártica Chilena (XII)'
 };
+// Capital de cada región: va primero en el selector de comunas.
+var CAPITALES = {
+  'Arica y Parinacota': 'Arica', 'Tarapacá': 'Iquique', 'Antofagasta': 'Antofagasta', 'Atacama': 'Copiapó', 'Coquimbo': 'La Serena',
+  'Valparaíso': 'Valparaíso', 'Metropolitana de Santiago': 'Santiago', "O'Higgins": 'Rancagua', 'Maule': 'Talca', 'Ñuble': 'Chillán',
+  'Biobío': 'Concepción', 'La Araucanía': 'Temuco', 'Los Ríos': 'Valdivia', 'Los Lagos': 'Puerto Montt', 'Aysén': 'Coyhaique',
+  'Magallanes': 'Punta Arenas'
+};
 // Busca la región de una comuna (sin importar mayúsculas ni tildes).
 var sinTilde = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 function regionDe(comuna) {
@@ -403,7 +410,7 @@ VISTAS.editarProp = async (main, { id }) => {
   // La comuna depende de la región elegida.
   const llenarComunas = () => {
     const r = REGIONES.find(x => x[0] === $('#selRegion').value), actual = comunaOficial(p.comuna);
-    const cs = r ? r[1] : [];
+    const cs = r ? [CAPITALES[r[0]], ...r[1].filter(c => c !== CAPITALES[r[0]])] : [];
     $('#selComuna').innerHTML = `<option value="">${r ? '— Elegir comuna —' : 'Primero elige la región'}</option>` +
       (p.comuna && !regionDe(p.comuna) ? `<option selected>${esc(p.comuna)}</option>` : '') +
       cs.map(c => `<option ${c === actual ? 'selected' : ''}>${esc(c)}</option>`).join('');
