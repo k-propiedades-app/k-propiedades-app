@@ -322,7 +322,13 @@
       const comunas = [...new Set(datos.propiedades.map(p => p.comuna).filter(Boolean))].sort();
       const sel = $('tipo'), ya = [...sel.options].map(o => o.value);
       [...new Set(datos.propiedades.map(p => p.tipo))].filter(t => t && !ya.includes(t)).forEach(t => sel.add(new Option(t)));
-      $('comuna').innerHTML += comunas.map(c => `<option>${esc(c)}</option>`).join('');
+      // Solo las comunas con propiedades vigentes, agrupadas por región.
+      const porRegion = {};
+      datos.propiedades.filter(p => p.comuna).forEach(p => { const r = p.region || 'Otras'; (porRegion[r] = porRegion[r] || new Set()).add(p.comuna); });
+      const regiones = Object.keys(porRegion);
+      $('comuna').innerHTML += regiones.length > 1
+        ? regiones.map(r => `<optgroup label="${esc(r)}">${[...porRegion[r]].sort().map(c => `<option>${esc(c)}</option>`).join('')}</optgroup>`).join('')
+        : comunas.map(c => `<option>${esc(c)}</option>`).join('');
       contacto(); portada(); listar(); equipo(); ruta();
     });
   </script>

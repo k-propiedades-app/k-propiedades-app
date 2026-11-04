@@ -317,7 +317,9 @@ VISTAS.editarProp = async (main, { id }) => {
     <label class="check"><input type="checkbox" name="vitrina" value="si" ${p.vitrina !== '' ? 'checked' : ''}> Mostrar en la vitrina pública (solo si está disponible o negociando)</label>
     ${campo('direccion', 'Dirección (privada, no sale en la vitrina)')}
     ${campo('ubicacionPublica', 'Ubicación para la vitrina (ej. a pasos de metro Ñuble)')}
-    <div class="fila"><div>${campo('comuna', 'Comuna')}</div><div>${campo('rol', 'Rol SII')}</div></div>
+    <div class="fila"><div><label>Comuna</label><select name="comuna"><option value="">— Elegir comuna —</option>${
+      (p.comuna && !regionDe(p.comuna) ? `<option selected>${esc(p.comuna)}</option>` : '') +
+      REGIONES.map(([r, cs]) => `<optgroup label="${esc(r)}">${cs.map(c => `<option ${c === comunaOficial(p.comuna) ? 'selected' : ''}>${esc(c)}</option>`).join('')}</optgroup>`).join('')}</select></div><div>${campo('rol', 'Rol SII')}</div></div>
     <div class="fila"><div>${campo('precio', 'Precio', 'text', 'inputmode="decimal" placeholder="ej. 105.000.000"')}</div>
       <div><label>Moneda</label><select name="moneda">${opt(['CLP', 'UF'], p.moneda)}</select></div></div>
     <div class="fila"><div>${campo('m2util', 'm² útiles / construidos', 'number', 'step="any"')}</div><div>${campo('m2total', 'm² totales / terreno', 'number', 'step="any"')}</div></div>
@@ -1133,7 +1135,7 @@ async function publicarVitrina(boton) {
         }
       }
       publicas.push({
-        id: p.id, codigo: p.codigo || '', titulo: p.titulo, tipo: p.tipo, operacion: p.operacion, estado: estadoDe(p), comuna: p.comuna || '',
+        id: p.id, codigo: p.codigo || '', titulo: p.titulo, tipo: p.tipo, operacion: p.operacion, estado: estadoDe(p), comuna: comunaOficial(p.comuna || ''), region: regionDe(p.comuna),
         ubicacion: p.ubicacionPublica || '', precio: num(p.precio) || '', moneda: p.moneda, m2util: p.m2util || '', m2total: p.m2total || '',
         dorm: p.dorm || '', banos: p.banos || '', estac: p.estac || '', bodega: p.bodega || '', gastosComunes: num(p.gastosComunes) || '',
         descripcion: p.descripcion || '', fotos: rutas,
