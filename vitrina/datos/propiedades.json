@@ -1,32 +1,76 @@
 {
- "actualizado": "2026-11-04T00:22:22.646Z",
+ "actualizado": "2026-11-04T02:58:00.096Z",
  "contacto": {
   "nombre": "K Propiedades",
   "telefono": "+56 9 3499 7313",
   "email": "kliberona.b@gmail.com"
  },
+ "corredores": [
+  {
+   "nombre": "Karen",
+   "telefono": "+56 9 3499 7313",
+   "email": "kliberona.b@gmail.com"
+  },
+  {
+   "nombre": "Alvaro",
+   "telefono": "+56966931397",
+   "email": "silva.garcia.a@gmail.com"
+  }
+ ],
  "propiedades": [
   {
+   "id": "mw1iukwdxeq8z",
+   "codigo": 2,
+   "titulo": "Prueba Parcela",
+   "tipo": "Parcela",
+   "operacion": "Venta",
+   "estado": "Disponible",
+   "comuna": "Pucón",
+   "region": "La Araucanía",
+   "ubicacion": "A pasos del hotel park lake",
+   "precio": 400000000,
+   "moneda": "CLP",
+   "m2util": "",
+   "m2total": "8000",
+   "hectareas": "0,8 ha",
+   "dorm": "",
+   "banos": "",
+   "estac": "",
+   "bodega": "",
+   "gastosComunes": "",
+   "descripcion": "Hermosa pacela de casi 1ha en camino Villarrica-Pucón, con agua, luz... legar y construir.",
+   "fotos": [],
+   "corredor": {
+    "nombre": "Alvaro",
+    "telefono": "+56966931397",
+    "email": "silva.garcia.a@gmail.com"
+   }
+  },
+  {
    "id": "mw1csm1zths3l",
+   "codigo": 1,
    "titulo": "Depto Edificio Mistral",
    "tipo": "Departamento",
    "operacion": "Venta",
    "estado": "Disponible",
    "comuna": "Temuco",
+   "region": "La Araucanía",
    "ubicacion": "A pasos del mall portal Temuco",
-   "precio": "105000000",
+   "precio": 105000000,
    "moneda": "CLP",
    "m2util": "",
    "m2total": "50",
+   "hectareas": "",
    "dorm": "3",
    "banos": "2",
    "estac": "1",
    "bodega": "0",
-   "gastosComunes": "110000",
+   "gastosComunes": 110000,
    "descripcion": "Se vende depto Avenida Gabriela Mistral",
    "fotos": [
     "datos/fotos/mw1d6z0i0p39u.jpg"
-   ]
+   ],
+   "corredor": null
   }
  ]
 }
