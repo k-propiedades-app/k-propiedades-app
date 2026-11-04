@@ -193,7 +193,7 @@ function fab(fn) {
 }
 
 // ---------- Propiedades ----------
-const TIPOS = ['Departamento', 'Casa', 'Oficina', 'Local comercial', 'Terreno', 'Parcela', 'Bodega', 'Estacionamiento'];
+const TIPOS = ['Casa', 'Departamento', 'Sitio', 'Parcela', 'Local comercial', 'Bodega', 'Oficina', 'Estacionamiento'];
 const ESTADOS = ['Captar', 'Captada', 'Disponible', 'Negociando', 'Arrendada', 'Vendida'];
 const ESTADO_ANTIGUO = { 'Captación': 'Captar', 'Publicada': 'Disponible', 'Pausada': 'Disponible', 'Reservada': 'Negociando' };
 const estadoDe = p => ESTADO_ANTIGUO[p.estado] || (ESTADOS.includes(p.estado) ? p.estado : 'Captar');
@@ -254,12 +254,16 @@ VISTAS.propiedades = async (main) => {
       <input id="buscar" type="search" placeholder="Buscar por código, comuna, dirección, rol…">
       <select id="filtro" style="max-width:40%"><option value="">Todas</option>${ESTADOS.map(e => `<option>${e}</option>`).join('')}<option value="pv">⭐ Postventa pendiente</option></select>
     </div>
+    <div class="barra">
+      <select id="fTipo" aria-label="Tipo de propiedad"><option value="">Todos los tipos</option>${TIPOS.map(t => `<option>${t}</option>`).join('')}</select>
+      <select id="fOp" aria-label="Venta o arriendo"><option value="">Venta y arriendo</option><option>Venta</option><option>Arriendo</option></select>
+    </div>
     <div class="resumen">${ESTADOS.map(e => `<span>${e} <b>${props.filter(p => estadoDe(p) === e).length}</b></span>`).join('')}
       <span>⭐ Postventa <b>${props.filter(p => postventaDe(p).pendiente).length}</b></span></div>
     <div class="lista" id="lista"></div>`;
   const listar = () => {
-    const q = $('#buscar').value.toLowerCase(), f = $('#filtro').value;
-    const vis = props.filter(p => (!f || (f === 'pv' ? postventaDe(p).pendiente : estadoDe(p) === f)) &&
+    const q = $('#buscar').value.toLowerCase(), f = $('#filtro').value, ft = $('#fTipo').value, fo = $('#fOp').value;
+    const vis = props.filter(p => (!ft || p.tipo === ft) && (!fo || p.operacion === fo) && (!f || (f === 'pv' ? postventaDe(p).pendiente : estadoDe(p) === f)) &&
       [p.titulo, p.direccion, p.comuna, p.rol, p.tipo, p.codigo, codigoTxt(p)].join(' ').toLowerCase().includes(q));
     $('#lista').innerHTML = vis.length ? '' : `<p class="vacio">${props.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay propiedades.<br>Toca + para agregar la primera.'}</p>`;
     vis.forEach(p => {
@@ -281,7 +285,7 @@ VISTAS.propiedades = async (main) => {
       $('#lista').appendChild(b);
     });
   };
-  $('#buscar').oninput = listar; $('#filtro').onchange = listar; listar();
+  $('#buscar').oninput = listar; $('#filtro').onchange = listar; $('#fTipo').onchange = listar; $('#fOp').onchange = listar; listar();
   $('#irNews').onclick = () => ir('newsletter', {});
   fab(() => ir('editarProp', {}));
 };
@@ -296,7 +300,7 @@ VISTAS.editarProp = async (main, { id }) => {
   const campo = (k, lbl, tipo = 'text', extra = '') => `<label>${lbl}</label><input name="${k}" type="${tipo}" value="${esc(p[k])}" ${extra}>`;
   main.innerHTML = `<form id="f">
     ${campo('titulo', 'Nombre corto (ej. Depto 2D2B Ñuñoa)')}
-    <div class="fila"><div><label>Tipo</label><select name="tipo">${opt(TIPOS, p.tipo)}</select></div>
+    <div class="fila"><div><label>Tipo</label><select name="tipo">${opt(TIPOS.includes(p.tipo) ? TIPOS : [...TIPOS, p.tipo], p.tipo)}</select></div>
       <div><label>Operación</label><select name="operacion">${opt(['Arriendo', 'Venta'], p.operacion)}</select></div></div>
     <label>Corredor a cargo</label><input name="corredor" list="corredores" value="${esc(p.corredor)}" placeholder="Ej. Karen Liberona">
     <datalist id="corredores">${[...new Set((await todos('props')).map(x => x.corredor).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>

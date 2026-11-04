@@ -35,6 +35,7 @@
     .btn.claro { background: var(--oro-claro); color: var(--tinta); }
     main { max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; }
     .filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .filtros select { flex: 1 1 150px; }
     .filtros button, .filtros select { font: inherit; font-size: 15px; border: 1px solid var(--linea); background: var(--tarjeta); color: var(--tinta);
       border-radius: 99px; padding: 8px 14px; }
     .filtros button.activo { background: var(--oro); color: #fff; border-color: var(--oro); }
@@ -42,6 +43,7 @@
     .card { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 16px; overflow: hidden; cursor: pointer;
       text-align: left; padding: 0; font: inherit; color: inherit; display: flex; flex-direction: column; }
     .card .foto { aspect-ratio: 4/3; background: var(--oro-claro) center/cover no-repeat; position: relative; }
+    .card .foto.sinfoto { background-size: auto 55%; background-color: var(--oro-claro); }
     .etq { position: absolute; left: 10px; top: 10px; background: var(--oro); color: #fff; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 99px; }
     .etq.neg { left: auto; right: 10px; background: #1f1a14; }
     .card .cuerpo { padding: 12px 14px 14px; }
@@ -73,14 +75,15 @@
   <header class="hero">
     <img src="../logo.png" alt="K Propiedades">
     <h1>Encuentra tu próxima propiedad</h1>
-    <p>Departamentos, casas y oficinas en arriendo y venta, con atención personalizada.</p>
+    <p>Casas, departamentos, sitios, parcelas, locales comerciales y bodegas en venta y arriendo, con atención personalizada.</p>
     <div class="contacto" id="contacto"></div>
   </header>
   <main>
     <div class="filtros" id="filtros">
-      <button data-op="" class="activo">Todas</button>
-      <button data-op="Arriendo">Arriendo</button>
-      <button data-op="Venta">Venta</button>
+      <select id="tipo" aria-label="Tipo de propiedad"><option value="">Todos los tipos</option>
+        <option>Casa</option><option>Departamento</option><option>Sitio</option><option>Parcela</option><option>Local comercial</option><option>Bodega</option>
+      </select>
+      <select id="operacion" aria-label="Venta o arriendo"><option value="">Venta y arriendo</option><option>Venta</option><option>Arriendo</option></select>
       <select id="comuna" aria-label="Comuna"><option value="">Todas las comunas</option></select>
     </div>
     <div class="grilla" id="grilla"><p class="vacio">Cargando propiedades…</p></div>
@@ -90,7 +93,7 @@
   <script>
   'use strict';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let datos = { propiedades: [], contacto: {} }, op = '';
+  let datos = { propiedades: [], contacto: {} };
   // Acepta números como 110000, "110.000" o "5.200,5".
   const num = v => {
     if (v == null || v === '') return 0;
@@ -112,12 +115,12 @@
     document.getElementById('pie').textContent = `K Propiedades${c.email ? ' · ' + c.email : ''}${datos.actualizado ? ' · Actualizado ' + new Date(datos.actualizado).toLocaleDateString('es-CL') : ''}`;
   }
   function listar() {
-    const com = document.getElementById('comuna').value;
-    const vis = datos.propiedades.filter(p => (!op || p.operacion === op) && (!com || p.comuna === com));
+    const com = document.getElementById('comuna').value, tipo = document.getElementById('tipo').value, op = document.getElementById('operacion').value;
+    const vis = datos.propiedades.filter(p => (!tipo || p.tipo === tipo) && (!op || p.operacion === op) && (!com || p.comuna === com));
     const g = document.getElementById('grilla');
     if (!vis.length) { g.innerHTML = `<p class="vacio">${datos.propiedades.length ? 'No hay propiedades con ese filtro.' : 'Pronto publicaremos nuevas propiedades.<br>Escríbenos y te ayudamos a encontrar la tuya.'}</p>`; return; }
     g.innerHTML = vis.map(p => `<button class="card" data-id="${esc(p.id)}">
-      <div class="foto" style="background-image:url('${p.fotos[0] ? esc(p.fotos[0]) : '../icons/icon-512.png'}')">
+      <div class="foto${p.fotos[0] ? '' : ' sinfoto'}" style="background-image:url('${p.fotos[0] ? esc(p.fotos[0]) : '../logo.png'}')">
         <span class="etq">${esc(p.operacion)}</span>${p.estado === 'Negociando' ? '<span class="etq neg">En negociación</span>' : ''}</div>
       <div class="cuerpo"><div class="precio">${precio(p)}</div><h2>${esc(p.titulo)}</h2>
       <div class="meta">${[p.comuna, ...meta(p)].filter(Boolean).map(esc).map(x => `<span>${x}</span>`).join('')}</div></div></button>`).join('');
@@ -162,9 +165,8 @@
     if (m) detalle(m[1]);
     else { document.querySelectorAll('.det').forEach(d => d.remove()); document.body.style.overflow = ''; document.title = 'K Propiedades · Propiedades en arriendo y venta'; }
   }
-  document.querySelectorAll('[data-op]').forEach(b => b.onclick = () => {
-    op = b.dataset.op; document.querySelectorAll('[data-op]').forEach(x => x.classList.toggle('activo', x === b)); listar();
-  });
+  document.getElementById('tipo').onchange = listar;
+  document.getElementById('operacion').onchange = listar;
   document.getElementById('comuna').onchange = listar;
   window.addEventListener('hashchange', ruta);
 
@@ -174,6 +176,8 @@
     .then(d => {
       datos = d; datos.propiedades = datos.propiedades || []; datos.contacto = datos.contacto || {};
       const comunas = [...new Set(datos.propiedades.map(p => p.comuna).filter(Boolean))].sort();
+      const sel = document.getElementById('tipo'), ya = [...sel.options].map(o => o.value);
+      [...new Set(datos.propiedades.map(p => p.tipo))].filter(t => t && !ya.includes(t)).forEach(t => sel.add(new Option(t)));
       document.getElementById('comuna').innerHTML += comunas.map(c => `<option>${esc(c)}</option>`).join('');
       document.getElementById('comuna').hidden = comunas.length < 2;
       contacto(); listar(); ruta();
