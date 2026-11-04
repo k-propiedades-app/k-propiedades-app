@@ -58,6 +58,10 @@ var CAPITALES = {
   'Biobío': 'Concepción', 'La Araucanía': 'Temuco', 'Los Ríos': 'Valdivia', 'Los Lagos': 'Puerto Montt', 'Aysén': 'Coyhaique',
   'Magallanes': 'Punta Arenas'
 };
+// Tipos que se miden en hectáreas. Acepta "0,5", "0.5" o "1".
+var CON_HECTAREAS = ['Campo', 'Parcela', 'Sitio'];
+function hectareasNum(v) { return parseFloat(String(v || '').replace(/\s|ha/gi, '').replace(',', '.')) || 0; }
+function hectareasTxt(p) { const h = CON_HECTAREAS.includes(p.tipo) && hectareasNum(p.hectareas); return h ? h.toLocaleString('es-CL') + ' ha' : ''; }
 // Busca la región de una comuna (sin importar mayúsculas ni tildes).
 var sinTilde = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 function regionDe(comuna) {
@@ -396,6 +400,8 @@ VISTAS.editarProp = async (main, { id }) => {
     <div class="fila"><div><label>Comuna</label><select name="comuna" id="selComuna"></select></div><div>${campo('rol', 'Rol SII')}</div></div>
     <div class="fila"><div>${campo('precio', 'Precio', 'text', 'inputmode="decimal" placeholder="ej. 105.000.000"')}</div>
       <div><label>Moneda</label><select name="moneda">${opt(['CLP', 'UF'], p.moneda)}</select></div></div>
+    <div id="filaHa" hidden><label>Hectáreas (ej. 0,5 · 1 · 2,75)</label><input name="hectareas" id="inHa" type="text" inputmode="decimal" value="${esc(p.hectareas)}" placeholder="0,5">
+      <p class="sub" style="margin:4px 0 0">Los m² totales se calculan solos (1 ha = 10.000 m²).</p></div>
     <div class="fila"><div>${campo('m2util', 'm² útiles / construidos', 'number', 'step="any"')}</div><div>${campo('m2total', 'm² totales / terreno', 'number', 'step="any"')}</div></div>
     <div class="fila"><div>${campo('dorm', 'Dormitorios', 'number')}</div><div>${campo('banos', 'Baños', 'number')}</div></div>
     <div class="fila"><div>${campo('estac', 'Estacionamientos', 'number')}</div><div>${campo('bodega', 'Bodegas', 'number')}</div></div>
@@ -416,6 +422,10 @@ VISTAS.editarProp = async (main, { id }) => {
       cs.map(c => `<option ${c === actual ? 'selected' : ''}>${esc(c)}</option>`).join('');
   };
   $('#selRegion').onchange = llenarComunas; llenarComunas();
+  // Campo, parcela y sitio: hectáreas que se convierten a m² totales.
+  const verHa = () => { $('#filaHa').hidden = !CON_HECTAREAS.includes($('#f [name=tipo]').value); };
+  $('#f [name=tipo]').addEventListener('change', verHa); verHa();
+  $('#inHa').oninput = () => { const ha = hectareasNum($('#inHa').value); if (ha) $('#f [name=m2total]').value = Math.round(ha * 10000); };
   $('#f').onsubmit = async e => {
     e.preventDefault();
     Object.assign(p, { vitrina: '' }, Object.fromEntries(new FormData(e.target)));
@@ -464,7 +474,7 @@ VISTAS.propiedad = async (main, { id }) => {
       <dl class="datos" style="margin-top:10px">
         ${fila('Corredor', p.corredor)}${fila('Precio', precioTxt(p))}${fila('Equivale a', preciosDobles(p, await valorUF()).otro)}${fila('Dirección', p.direccion)}${fila('Comuna', p.comuna)}${fila('Ubic. pública', p.ubicacionPublica)}${fila('Rol', p.rol)}
         ${fila(estadoDe(p) === 'Vendida' ? 'Vendida el' : 'Arrendada el', cerrada(p) && p.fechaCierre ? new Date(p.fechaCierre + 'T12:00').toLocaleDateString('es-CL') : '')}
-        ${fila('m² útiles', p.m2util)}${fila('m² totales', p.m2total)}${fila('Dormitorios', p.dorm)}${fila('Baños', p.banos)}
+        ${fila('Hectáreas', hectareasTxt(p))}${fila('m² útiles', p.m2util)}${fila('m² totales', p.m2total)}${fila('Dormitorios', p.dorm)}${fila('Baños', p.banos)}
         ${fila('Estacionam.', p.estac)}${fila('Bodegas', p.bodega)}
         ${fila('Gastos com.', num(p.gastosComunes) && plata(p.gastosComunes))}
         ${fila('Contribuc.', num(p.contribuciones) && plata(p.contribuciones))}
@@ -1219,7 +1229,7 @@ async function publicarVitrina(boton) {
       }
       publicas.push({
         id: p.id, codigo: p.codigo || '', titulo: p.titulo, tipo: p.tipo, operacion: p.operacion, estado: estadoDe(p), comuna: comunaOficial(p.comuna || ''), region: p.region || regionDe(p.comuna),
-        ubicacion: p.ubicacionPublica || '', precio: num(p.precio) || '', moneda: p.moneda, m2util: p.m2util || '', m2total: p.m2total || '',
+        ubicacion: p.ubicacionPublica || '', precio: num(p.precio) || '', moneda: p.moneda, m2util: p.m2util || '', m2total: p.m2total || '', hectareas: hectareasTxt(p),
         dorm: p.dorm || '', banos: p.banos || '', estac: p.estac || '', bodega: p.bodega || '', gastosComunes: num(p.gastosComunes) || '',
         descripcion: p.descripcion || '', fotos: rutas,
         corredor: (c => c ? { nombre: c.nombre, telefono: c.telefono || '', email: c.email || '' } : null)(corrs.find(c => c.nombre === p.corredor))

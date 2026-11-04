@@ -206,7 +206,7 @@
     bano: '<svg viewBox="0 0 24 24"><path d="M4 12h16v2a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM6 12V5a2 2 0 0 1 4 0M7 19l-1 2M17 19l1 2"/></svg>',
     estac: '<svg viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5zM5 16v2M19 16v2M5 11h14"/></svg>'
   };
-  const specs = p => [p.m2util && [ICO.util, p.m2util + ' m²'], p.m2total && [ICO.total, p.m2total + ' m²'], p.dorm && [ICO.dorm, p.dorm],
+  const specs = p => [p.m2util && [ICO.util, p.m2util + ' m²'], p.hectareas ? [ICO.total, p.hectareas] : p.m2total && [ICO.total, Number(p.m2total).toLocaleString('es-CL') + ' m²'], p.dorm && [ICO.dorm, p.dorm],
     p.banos && [ICO.bano, p.banos], Number(p.estac) && [ICO.estac, p.estac]].filter(Boolean)
     .map(([i, t]) => `<span>${i}${esc(t)}</span>`).join('');
   const titular = p => [p.tipo, p.comuna && 'en ' + p.comuna].filter(Boolean).join(' ') || p.titulo;
@@ -262,7 +262,7 @@
     const p = datos.propiedades.find(x => x.id === id);
     if (!p) return;
     document.title = `${p.titulo} · K Propiedades`;
-    const ficha = [['Precio', precio(p)], ['Código', codigo(p)], ['Operación', p.operacion], ['Tipo', p.tipo], ['Comuna', p.comuna], ['m² útiles', p.m2util], ['m² totales', p.m2total],
+    const ficha = [['Precio', precio(p)], ['Código', codigo(p)], ['Operación', p.operacion], ['Tipo', p.tipo], ['Comuna', p.comuna], ['Hectáreas', p.hectareas], ['m² útiles', p.m2util], ['m² totales', p.m2total && Number(p.m2total).toLocaleString('es-CL')],
       ['Dormitorios', p.dorm], ['Baños', p.banos], ['Estacionam.', Number(p.estac) ? p.estac : ''], ['Bodegas', Number(p.bodega) ? p.bodega : ''],
       ['Gastos comunes', num(p.gastosComunes) && '$' + num(p.gastosComunes).toLocaleString('es-CL')]].filter(f => f[1]);
     const tel = (p.corredor && p.corredor.telefono) || datos.contacto.telefono;
