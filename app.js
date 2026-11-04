@@ -7,13 +7,15 @@ const DB_NOMBRE = 'kpropiedades';
 let dbp = null;
 function db() {
   if (!dbp) dbp = new Promise((ok, mal) => {
-    const r = indexedDB.open(DB_NOMBRE, 1);
+    const r = indexedDB.open(DB_NOMBRE, 2);
     r.onupgradeneeded = () => {
       const d = r.result;
-      d.createObjectStore('props', { keyPath: 'id' });
-      d.createObjectStore('personas', { keyPath: 'id' });
-      d.createObjectStore('media', { keyPath: 'id' }).createIndex('propId', 'propId');
-      d.createObjectStore('ajustes', { keyPath: 'k' });
+      const hay = n => d.objectStoreNames.contains(n);
+      if (!hay('props')) d.createObjectStore('props', { keyPath: 'id' });
+      if (!hay('personas')) d.createObjectStore('personas', { keyPath: 'id' });
+      if (!hay('media')) d.createObjectStore('media', { keyPath: 'id' }).createIndex('propId', 'propId');
+      if (!hay('ajustes')) d.createObjectStore('ajustes', { keyPath: 'k' });
+      if (!hay('tareas')) d.createObjectStore('tareas', { keyPath: 'id' });
     };
     r.onsuccess = () => ok(r.result);
     r.onerror = () => mal(r.error);
@@ -64,6 +66,36 @@ function num(v) {
   return Number(/,\d{1,2}$/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t.replace(/[.,]/g, '')) || 0;
 }
 const plata = v => '$' + num(v).toLocaleString('es-CL');
+const codigoTxt = p => p.codigo ? 'Cód. ' + String(p.codigo).padStart(4, '0') : '';
+// Asigna un código correlativo a las propiedades que no lo tienen (por orden de creación).
+async function asegurarCodigos(props) {
+  let max = Math.max(0, ...props.map(p => p.codigo || 0));
+  for (const p of [...props].sort((a, b) => a.creado - b.creado)) {
+    if (!p.codigo) { p.codigo = ++max; await guardar('props', p); }
+  }
+}
+// Valor de la UF: se consulta una vez al día; si no hay internet usa el último guardado o el ingresado a mano.
+let ufCache = null;
+async function valorUF() {
+  if (ufCache) return ufCache;
+  const hoy = new Date().toISOString().slice(0, 10);
+  const g = await uno('ajustes', 'uf');
+  if (g && g.v && g.fecha === hoy) return (ufCache = g.v);
+  try {
+    const r = await fetch('https://mindicador.cl/api/uf', { cache: 'no-store' });
+    const v = (await r.json()).serie[0].valor;
+    if (v > 1000) { await guardar('ajustes', { k: 'uf', v, fecha: hoy }); return (ufCache = v); }
+  } catch (e) { /* sin internet o servicio caído */ }
+  return g && g.v ? (ufCache = g.v) : null;
+}
+// Precio en la moneda original y su equivalente en la otra.
+function preciosDobles(p, uf) {
+  const v = num(p.precio);
+  if (!v) return { principal: 'Precio a consultar', otro: '' };
+  const mes = p.operacion === 'Arriendo' && p.moneda !== 'UF' ? '/mes' : '';
+  if (p.moneda === 'UF') return { principal: `UF ${v.toLocaleString('es-CL')}`, otro: uf ? `$${Math.round(v * uf).toLocaleString('es-CL')}` : '' };
+  return { principal: `$${v.toLocaleString('es-CL')}${mes}`, otro: uf ? `UF ${(v / uf).toLocaleString('es-CL', { maximumFractionDigits: v / uf < 100 ? 1 : 0 })}${mes}` : '' };
+}
 function precioTxt(p) {
   if (!num(p.precio)) return '';
   const n = num(p.precio).toLocaleString('es-CL');
@@ -124,7 +156,7 @@ async function procesarFoto(blob, conMarca) {
 
 // ---------- Navegación ----------
 const pila = [];
-let tab = 'propiedades';
+let tab = 'inicio';
 function ir(vista, params = {}, reemplazar = false) {
   if (reemplazar) pila.pop(); else history.pushState({ n: pila.length + 1 }, '');
   pila.push({ vista, params });
@@ -134,12 +166,13 @@ function volver() { history.back(); }
 window.addEventListener('popstate', () => {
   if (pila.length > 1) { pila.pop(); pintar(); }
 });
-document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
-  tab = b.dataset.tab;
-  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('activo', x === b));
+function irTab(nombre) {
+  tab = nombre;
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('activo', x.dataset.tab === nombre));
   pila.length = 0; pila.push({ vista: tab, params: {} });
   pintar();
-});
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => irTab(b.dataset.tab));
 $('#atras').onclick = volver;
 
 const VISTAS = {};
@@ -193,6 +226,7 @@ function marcarCambioEstado(p, antes) {
   if (estadoDe(p) === antes) return;
   if (cerrada(p)) p.fechaCierre = hoy;
   if (estadoDe(p) === 'Disponible' && !p.fechaDisponible) p.fechaDisponible = hoy;
+  if (estadoDe(p) === 'Captada' && !p.fechaCaptada) p.fechaCaptada = hoy;
 }
 function postventaDe(p) {
   const tareas = POSTVENTA[estadoDe(p)] || [];
@@ -211,11 +245,13 @@ function chipEstado(p) {
 VISTAS.propiedades = async (main) => {
   titulo('Propiedades');
   const props = (await todos('props')).sort((a, b) => b.creado - a.creado);
+  await asegurarCodigos(props);
   const fotos = (await todos('media')).filter(m => m.kind === 'foto');
+  const uf = await valorUF();
   main.innerHTML = `
     <button class="btn sec ancho" id="irNews" style="margin:0 0 12px">📰 Newsletter para LinkedIn</button>
     <div class="barra">
-      <input id="buscar" type="search" placeholder="Buscar por comuna, dirección, rol…">
+      <input id="buscar" type="search" placeholder="Buscar por código, comuna, dirección, rol…">
       <select id="filtro" style="max-width:40%"><option value="">Todas</option>${ESTADOS.map(e => `<option>${e}</option>`).join('')}<option value="pv">⭐ Postventa pendiente</option></select>
     </div>
     <div class="resumen">${ESTADOS.map(e => `<span>${e} <b>${props.filter(p => estadoDe(p) === e).length}</b></span>`).join('')}
@@ -224,15 +260,23 @@ VISTAS.propiedades = async (main) => {
   const listar = () => {
     const q = $('#buscar').value.toLowerCase(), f = $('#filtro').value;
     const vis = props.filter(p => (!f || (f === 'pv' ? postventaDe(p).pendiente : estadoDe(p) === f)) &&
-      [p.titulo, p.direccion, p.comuna, p.rol, p.tipo].join(' ').toLowerCase().includes(q));
+      [p.titulo, p.direccion, p.comuna, p.rol, p.tipo, p.codigo, codigoTxt(p)].join(' ').toLowerCase().includes(q));
     $('#lista').innerHTML = vis.length ? '' : `<p class="vacio">${props.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay propiedades.<br>Toca + para agregar la primera.'}</p>`;
     vis.forEach(p => {
       const foto = portadaDe(p, fotos.filter(m => m.propId === p.id));
-      const b = document.createElement('button'); b.className = 'tarjeta';
-      b.innerHTML = `${foto ? `<img src="${url(foto.blob)}" alt="">` : '<div class="sinfoto">🏠</div>'}
-        <div class="info"><h3>${esc(p.titulo || p.tipo)}</h3>
-        <div class="sub">${esc([p.direccion, p.comuna].filter(Boolean).join(', '))}</div>
-        <span class="chip oro">${esc(p.operacion)}</span>${chipEstado(p)}${precioTxt(p) ? `<span class="chip">${precioTxt(p)}</span>` : ''}</div>`;
+      const b = document.createElement('button'); b.className = 'ficha-prop';
+      const pr = preciosDobles(p, uf);
+      const specs = [[p.dorm, 'dorm.'], [p.banos, 'baños'], [p.m2util, 'm² útiles'], [p.m2total, 'm² totales']].filter(x => num(x[0]));
+      b.innerHTML = `<div class="fp-foto${foto ? "" : " vacia"}">${foto ? `<img src="${url(foto.blob)}" alt="">` : '<span>🏠</span>'}
+          <span class="fp-op">${esc(p.operacion)}</span></div>
+        <div class="fp-cuerpo">
+          <div class="fp-chips"><span class="chip codigo">${codigoTxt(p)}</span>${chipEstado(p)}</div>
+          <h3>${esc(p.titulo || p.tipo)}</h3>
+          <div class="sub">📍 ${esc([p.ubicacionPublica || p.direccion, p.comuna].filter(Boolean).join(' · ') || 'Sin ubicación')}</div>
+          <div class="fp-precio"><b>${pr.principal}</b>${pr.otro ? `<span>${pr.otro}</span>` : ''}</div>
+          ${specs.length ? `<div class="fp-specs">${specs.map(x => `<div><b>${esc(x[0])}</b><small>${x[1]}</small></div>`).join('')}</div>` : ''}
+          ${p.corredor ? `<div class="fp-corredor">👤 ${esc(p.corredor)} <small>Corredor a cargo</small></div>` : ''}
+        </div>`;
       b.onclick = () => ir('propiedad', { id: p.id });
       $('#lista').appendChild(b);
     });
@@ -243,7 +287,7 @@ VISTAS.propiedades = async (main) => {
 };
 
 VISTAS.editarProp = async (main, { id }) => {
-  const p = id ? await uno('props', id) : { id: nuevoId(), creado: Date.now(), tipo: 'Departamento', operacion: 'Arriendo', estado: 'Captar', moneda: 'CLP', vitrina: 'si' };
+  const p = id ? await uno('props', id) : { id: nuevoId(), codigo: Math.max(0, ...(await todos('props')).map(x => x.codigo || 0)) + 1, creado: Date.now(), tipo: 'Departamento', operacion: 'Arriendo', estado: 'Captar', moneda: 'CLP', vitrina: 'si' };
   p.estado = estadoDe(p);
   const estadoAntes = p.estado, precioAntes = p.precio;
   const personas = (await todos('personas')).sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -254,6 +298,8 @@ VISTAS.editarProp = async (main, { id }) => {
     ${campo('titulo', 'Nombre corto (ej. Depto 2D2B Ñuñoa)')}
     <div class="fila"><div><label>Tipo</label><select name="tipo">${opt(TIPOS, p.tipo)}</select></div>
       <div><label>Operación</label><select name="operacion">${opt(['Arriendo', 'Venta'], p.operacion)}</select></div></div>
+    <label>Corredor a cargo</label><input name="corredor" list="corredores" value="${esc(p.corredor)}" placeholder="Ej. Karen Liberona">
+    <datalist id="corredores">${[...new Set((await todos('props')).map(x => x.corredor).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist>
     <label>Estado del proceso</label><select name="estado">${opt(ESTADOS, p.estado)}</select>
     <label class="check"><input type="checkbox" name="vitrina" value="si" ${p.vitrina !== '' ? 'checked' : ''}> Mostrar en la vitrina pública (solo si está disponible o negociando)</label>
     ${campo('direccion', 'Dirección (privada, no sale en la vitrina)')}
@@ -261,7 +307,7 @@ VISTAS.editarProp = async (main, { id }) => {
     <div class="fila"><div>${campo('comuna', 'Comuna')}</div><div>${campo('rol', 'Rol SII')}</div></div>
     <div class="fila"><div>${campo('precio', 'Precio', 'text', 'inputmode="decimal" placeholder="ej. 105.000.000"')}</div>
       <div><label>Moneda</label><select name="moneda">${opt(['CLP', 'UF'], p.moneda)}</select></div></div>
-    <div class="fila"><div>${campo('m2util', 'm² útiles', 'number', 'step="any"')}</div><div>${campo('m2total', 'm² totales', 'number', 'step="any"')}</div></div>
+    <div class="fila"><div>${campo('m2util', 'm² útiles / construidos', 'number', 'step="any"')}</div><div>${campo('m2total', 'm² totales / terreno', 'number', 'step="any"')}</div></div>
     <div class="fila"><div>${campo('dorm', 'Dormitorios', 'number')}</div><div>${campo('banos', 'Baños', 'number')}</div></div>
     <div class="fila"><div>${campo('estac', 'Estacionamientos', 'number')}</div><div>${campo('bodega', 'Bodegas', 'number')}</div></div>
     <div class="fila"><div>${campo('gastosComunes', 'Gastos comunes ($)', 'text', 'inputmode="decimal"')}</div><div>${campo('contribuciones', 'Contribuciones ($/trim.)', 'text', 'inputmode="decimal"')}</div></div>
@@ -312,12 +358,13 @@ VISTAS.propiedad = async (main, { id }) => {
   main.innerHTML = `
     <div class="seccion">
       <h2>${esc(p.titulo)} <button class="btn sec chico" id="editar">Editar</button></h2>
+      ${p.codigo ? `<span class="chip codigo">${codigoTxt(p)}</span>` : ''}
       <span class="chip oro">${esc(p.operacion)}</span><span id="chipsEstado">${chipEstado(p)}</span>${enVitrina(p) ? '<span class="chip">🌐 En vitrina</span>' : ''}
       <div class="estados" role="group" aria-label="Estado del proceso">
         ${ESTADOS.map(e => `<button data-estado="${e}" class="${estadoDe(p) === e ? 'activo' : ''}">${e}</button>`).join('')}
       </div>
       <dl class="datos" style="margin-top:10px">
-        ${fila('Precio', precioTxt(p))}${fila('Dirección', p.direccion)}${fila('Comuna', p.comuna)}${fila('Ubic. pública', p.ubicacionPublica)}${fila('Rol', p.rol)}
+        ${fila('Corredor', p.corredor)}${fila('Precio', precioTxt(p))}${fila('Equivale a', preciosDobles(p, await valorUF()).otro)}${fila('Dirección', p.direccion)}${fila('Comuna', p.comuna)}${fila('Ubic. pública', p.ubicacionPublica)}${fila('Rol', p.rol)}
         ${fila(estadoDe(p) === 'Vendida' ? 'Vendida el' : 'Arrendada el', cerrada(p) && p.fechaCierre ? new Date(p.fechaCierre + 'T12:00').toLocaleDateString('es-CL') : '')}
         ${fila('m² útiles', p.m2util)}${fila('m² totales', p.m2total)}${fila('Dormitorios', p.dorm)}${fila('Baños', p.banos)}
         ${fila('Estacionam.', p.estac)}${fila('Bodegas', p.bodega)}
@@ -353,6 +400,7 @@ VISTAS.propiedad = async (main, { id }) => {
         <button class="btn" id="compartir">📤 Compartir aviso</button>
         <button class="btn sec" id="copiar">📋 Copiar texto</button>
         <button class="btn sec" id="pubFicha">🚀 Publicar en vitrina</button>
+        <button class="btn sec" id="agendarProp">📅 Agendar visita</button>
         <a class="btn sec" href="sticker.png" download="K_Propiedades_sticker.png">🏷️ Sticker del logo</a>
       </div>
     </div>
@@ -393,7 +441,7 @@ VISTAS.propiedad = async (main, { id }) => {
   main.querySelectorAll('[data-capt]').forEach(ch => ch.onchange = async () => {
     p.captacion = Object.assign({}, p.captacion, { [ch.dataset.capt]: ch.checked ? new Date().toISOString().slice(0, 10) : '' });
     p.actualizado = Date.now();
-    if (ch.checked && ch.dataset.capt === 'Orden de corretaje firmada' && estadoDe(p) === 'Captar') { p.estado = 'Captada'; aviso('Estado: Captada'); }
+    if (ch.checked && ch.dataset.capt === 'Orden de corretaje firmada' && estadoDe(p) === 'Captar') { p.estado = 'Captada'; marcarCambioEstado(p, 'Captar'); aviso('Estado: Captada'); }
     await guardar('props', p);
     const c = captacionDe(p);
     main.querySelector('.captacion h2').textContent = `📋 Captación (${c.hechas}/${c.tareas.length})`;
@@ -491,6 +539,7 @@ VISTAS.propiedad = async (main, { id }) => {
   const texto = () => textoAviso(p, cfg);
   $('#copiar').onclick = async () => { await copiar(texto()); };
   $('#pubFicha').onclick = e => publicarVitrina(e.target);
+  $('#agendarProp').onclick = () => ir('editarTarea', { propId: id, tipo: enCaptacion(p) ? 'Captación' : 'Visita' });
   $('#compartir').onclick = async () => {
     const elegidas = seleccion.size ? fotos.filter(f => seleccion.has(f.id)) : fotos;
     const base = (p.titulo || 'propiedad').replace(/[^\w]+/g, '_');
@@ -578,6 +627,200 @@ function visor(m, tipo) {
     if (a === 'borrar' && confirm('¿Eliminar este archivo?')) { await borrar('media', m.id); v.remove(); aviso('Eliminado'); pintar(); }
   };
 }
+
+// ---------- Panel de inicio ----------
+const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const fechaISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function ultimosMeses(n) {
+  const out = [], d = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const x = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    out.push({ clave: fechaISO(x).slice(0, 7), nombre: x.toLocaleDateString('es-CL', { month: 'short' }).replace('.', '') });
+  }
+  return out;
+}
+// Gráfico de barras de una sola serie, con detalle al tocar y tabla accesible.
+function graficoBarras(tituloG, datos, unidad) {
+  const W = 320, H = 150, base = 120, top = 18, max = Math.max(1, ...datos.map(d => d.valor));
+  const paso = W / datos.length, ancho = Math.min(34, paso - 14);
+  const maxIdx = datos.reduce((m, d, i) => d.valor > datos[m].valor ? i : m, 0);
+  const barras = datos.map((d, i) => {
+    const h = d.valor ? Math.max(4, (d.valor / max) * (base - top)) : 0;
+    const x = i * paso + (paso - ancho) / 2, y = base - h;
+    const etiqueta = (i === maxIdx && d.valor) || i === datos.length - 1 ? `<text x="${x + ancho / 2}" y="${y - 5}" class="g-valor">${d.valor}</text>` : '';
+    const forma = h ? `<path d="M${x},${base} V${y + 4} Q${x},${y} ${x + 4},${y} H${x + ancho - 4} Q${x + ancho},${y} ${x + ancho},${y + 4} V${base} Z" class="g-barra"/>` : '';
+    return `<g class="g-col" data-i="${i}" tabindex="0" aria-label="${esc(d.nombre)}: ${d.valor} ${unidad}">
+      <rect x="${i * paso}" y="0" width="${paso}" height="${H}" fill="transparent"/>${forma}${etiqueta}
+      <text x="${i * paso + paso / 2}" y="${base + 18}" class="g-eje">${esc(d.nombre)}</text></g>`;
+  }).join('');
+  return `<div class="seccion grafico"><h2>${tituloG}</h2>
+    <div class="g-caja"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(tituloG)}">
+      <line x1="0" x2="${W}" y1="${base}" y2="${base}" class="g-base"/>${barras}</svg>
+      <div class="g-tip" hidden></div></div>
+    <details><summary class="sub">Ver tabla</summary><table class="g-tabla">
+      ${datos.map(d => `<tr><td>${esc(d.nombre)}</td><td>${d.valor} ${unidad}</td></tr>`).join('')}</table></details></div>`;
+}
+function activarGraficos(main, series) {
+  main.querySelectorAll('.grafico').forEach((g, k) => {
+    const tip = g.querySelector('.g-tip'), svg = g.querySelector('svg');
+    const mostrar = col => {
+      const d = series[k].datos[col.dataset.i];
+      tip.textContent = `${d.nombre}: ${d.valor} ${series[k].unidad}`;
+      tip.hidden = false;
+      const r = col.getBoundingClientRect(), c = g.querySelector('.g-caja').getBoundingClientRect();
+      tip.style.left = Math.min(Math.max(0, r.left - c.left + r.width / 2 - 60), c.width - 120) + 'px';
+      g.querySelectorAll('.g-col').forEach(x => x.classList.toggle('activa', x === col));
+    };
+    svg.querySelectorAll('.g-col').forEach(col => {
+      col.addEventListener('pointerenter', () => mostrar(col));
+      col.addEventListener('click', () => mostrar(col));
+      col.addEventListener('focus', () => mostrar(col));
+    });
+    svg.addEventListener('pointerleave', () => { tip.hidden = true; g.querySelectorAll('.g-col').forEach(x => x.classList.remove('activa')); });
+  });
+}
+
+VISTAS.inicio = async (main) => {
+  titulo('Inicio');
+  const props = await todos('props'), personas = await todos('personas'), tareas = await todos('tareas');
+  await asegurarCodigos(props);
+  const hoy = hoyISO(), mes = hoy.slice(0, 7);
+  const activas = props.filter(p => ['Disponible', 'Negociando'].includes(estadoDe(p)));
+  const captando = props.filter(enCaptacion);
+  const cierresMes = props.filter(p => cerrada(p) && (p.fechaCierre || '').startsWith(mes));
+  const postventas = props.filter(p => postventaDe(p).pendiente);
+  const deHoy = tareas.filter(t => !t.hecha && t.fecha <= hoy).sort((a, b) => (a.fecha + (a.hora || '')).localeCompare(b.fecha + (b.hora || '')));
+  const clientes = personas.filter(x => x.rol !== 'Propietario');
+  const meses = ultimosMeses(6);
+  const fechaCapt = p => p.fechaCaptada || (['Captar'].includes(estadoDe(p)) ? '' : fechaISO(new Date(p.creado)));
+  const series = [
+    { titulo: 'Captaciones por mes', unidad: 'captación(es)', datos: meses.map(m => ({ nombre: m.nombre, valor: props.filter(p => fechaCapt(p).startsWith(m.clave)).length })) },
+    { titulo: 'Arriendos y ventas cerrados por mes', unidad: 'cierre(s)', datos: meses.map(m => ({ nombre: m.nombre, valor: props.filter(p => cerrada(p) && (p.fechaCierre || '').startsWith(m.clave)).length })) }
+  ];
+  const tile = (n, txt, ir_) => `<button class="tile" data-ir="${ir_}"><b>${n}</b><span>${txt}</span></button>`;
+  const fechaLarga = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+  main.innerHTML = `
+    <p class="sub" style="margin:0 0 10px">${fechaLarga.charAt(0).toUpperCase() + fechaLarga.slice(1)}</p>
+    <div class="tiles">
+      ${tile(activas.length, 'Activas (disponibles o negociando)', 'propiedades')}
+      ${tile(captando.length, 'En captación', 'propiedades')}
+      ${tile(cierresMes.length, 'Cierres este mes', 'propiedades')}
+      ${tile(postventas.length, '⭐ Postventas pendientes', 'propiedades')}
+      ${tile(deHoy.length, 'Tareas para hoy', 'agenda')}
+      ${tile(clientes.length, 'Clientes e interesados', 'personas')}
+    </div>
+    <div class="seccion"><h2>Para hoy <button class="btn sec chico" id="verAgenda">Ver agenda</button></h2>
+      <div id="hoyLista">${deHoy.length ? '' : '<p class="sub" style="margin:0">Nada pendiente para hoy. 🎉</p>'}</div></div>
+    ${series.map(x => graficoBarras(x.titulo, x.datos, x.unidad)).join('')}
+    ${postventas.length || captando.length ? `<div class="seccion"><h2>Seguimiento</h2><div class="lista">
+      ${[...postventas, ...captando].slice(0, 6).map(p => `<button class="tarjeta" data-prop="${p.id}"><div class="info"><h3>${esc(p.titulo)}</h3>${chipEstado(p)}</div></button>`).join('')}
+    </div></div>` : ''}`;
+  const lista = $('#hoyLista');
+  deHoy.slice(0, 8).forEach(t => lista.appendChild(filaTarea(t, props, personas, true)));
+  activarGraficos(main, series);
+  main.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => irTab(b.dataset.ir));
+  main.querySelectorAll('[data-prop]').forEach(b => b.onclick = () => ir('propiedad', { id: b.dataset.prop }));
+  $('#verAgenda').onclick = () => irTab('agenda');
+};
+
+// ---------- Agenda ----------
+const TIPOS_TAREA = ['Visita', 'Captación', 'Llamada', 'Firma', 'Entrega de llaves', 'Reunión', 'Otro'];
+const ICONO_TAREA = { Visita: '🏠', 'Captación': '📋', Llamada: '📞', Firma: '✍️', 'Entrega de llaves': '🔑', 'Reunión': '🤝', Otro: '📌' };
+let agendaDia = hoyISO();
+
+function filaTarea(t, props, personas, conFecha) {
+  const p = props.find(x => x.id === t.propId), x = personas.find(y => y.id === t.personaId);
+  const atrasada = !t.hecha && t.fecha < hoyISO();
+  const d = document.createElement('div'); d.className = 'tarea' + (t.hecha ? ' hecha' : '');
+  d.innerHTML = `<input type="checkbox" ${t.hecha ? 'checked' : ''} aria-label="Marcar como hecha">
+    <button class="tarea-info">
+      <div><b>${t.hora || '—'}</b> ${ICONO_TAREA[t.tipo] || '📌'} ${esc(t.tipo)}${atrasada ? ' <span class="chip amarillo">Atrasada</span>' : ''}${conFecha && t.fecha !== hoyISO() ? ` <small>${new Date(t.fecha + 'T12:00').toLocaleDateString('es-CL')}</small>` : ''}</div>
+      <div class="sub">${esc([p && p.titulo, x && x.nombre].filter(Boolean).join(' · '))}${t.nota ? ' — ' + esc(t.nota) : ''}</div>
+    </button>`;
+  d.querySelector('input').onchange = async e => {
+    t.hecha = e.target.checked; await guardar('tareas', t);
+    d.classList.toggle('hecha', t.hecha); aviso(t.hecha ? 'Tarea hecha ✅' : 'Tarea pendiente');
+  };
+  d.querySelector('.tarea-info').onclick = () => ir('editarTarea', { id: t.id });
+  return d;
+}
+
+VISTAS.agenda = async (main) => {
+  titulo('Agenda');
+  const tareas = await todos('tareas'), props = await todos('props'), personas = await todos('personas');
+  const sel = new Date(agendaDia + 'T12:00');
+  const lunes = new Date(sel); lunes.setDate(sel.getDate() - ((sel.getDay() + 6) % 7));
+  const dias = [...Array(7)].map((_, i) => { const d = new Date(lunes); d.setDate(lunes.getDate() + i); return d; });
+  const mesTxt = sel.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+  main.innerHTML = `<div class="seccion semana">
+      <div class="semana-top"><button class="btn sec chico" id="semAnt" aria-label="Semana anterior">‹</button>
+        <b>${mesTxt.charAt(0).toUpperCase() + mesTxt.slice(1)}</b>
+        <button class="btn sec chico" id="semSig" aria-label="Semana siguiente">›</button></div>
+      <div class="dias">${dias.map(d => {
+        const f = fechaISO(d), n = tareas.filter(t => t.fecha === f && !t.hecha).length;
+        return `<button data-dia="${f}" class="${f === agendaDia ? 'activo' : ''} ${f === hoyISO() ? 'hoy' : ''}">
+          <small>${d.toLocaleDateString('es-CL', { weekday: 'short' }).replace('.', '')}</small><b>${d.getDate()}</b><i>${n ? '•'.repeat(Math.min(n, 3)) : ''}</i></button>`;
+      }).join('')}</div>
+      <button class="btn sec chico" id="irHoy" style="margin-top:8px">Hoy</button>
+    </div>
+    <h2 class="dia-titulo">${(d => d.charAt(0).toUpperCase() + d.slice(1))(sel.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" }))}</h2>
+    <div class="lista" id="tareasDia"></div>`;
+  const delDia = tareas.filter(t => t.fecha === agendaDia).sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
+  const cont = $('#tareasDia');
+  if (!delDia.length) cont.innerHTML = '<p class="vacio">Sin tareas este día.<br>Toca + para agendar una visita, llamada o firma.</p>';
+  delDia.forEach(t => cont.appendChild(filaTarea(t, props, personas, false)));
+  const mover = n => { const d = new Date(agendaDia + 'T12:00'); d.setDate(d.getDate() + n); agendaDia = fechaISO(d); pintar(); };
+  $('#semAnt').onclick = () => mover(-7); $('#semSig').onclick = () => mover(7);
+  $('#irHoy').onclick = () => { agendaDia = hoyISO(); pintar(); };
+  main.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => { agendaDia = b.dataset.dia; pintar(); });
+  fab(() => ir('editarTarea', { fecha: agendaDia }));
+};
+
+function linkGoogleCalendar(t, p, x) {
+  const ini = (t.fecha + 'T' + (t.hora || '09:00')).replace(/[-:]/g, '') + '00';
+  const finD = new Date(`${t.fecha}T${t.hora || '09:00'}`); finD.setHours(finD.getHours() + 1);
+  const fin = `${fechaISO(finD).replace(/-/g, '')}T${String(finD.getHours()).padStart(2, '0')}${String(finD.getMinutes()).padStart(2, '0')}00`;
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: `${t.tipo}${p ? ': ' + p.titulo : ''}${x ? ' con ' + x.nombre : ''}`,
+    dates: `${ini}/${fin}`, ctz: 'America/Santiago', details: [t.nota, x && x.telefono && 'Tel: ' + x.telefono, 'K Propiedades'].filter(Boolean).join('\n'),
+    location: p ? [p.direccion, p.comuna].filter(Boolean).join(', ') : '' });
+  return 'https://calendar.google.com/calendar/render?' + q;
+}
+
+VISTAS.editarTarea = async (main, params) => {
+  const t = params.id ? await uno('tareas', params.id)
+    : { id: nuevoId(), creado: Date.now(), tipo: params.tipo || 'Visita', fecha: params.fecha || agendaDia, hora: '', propId: params.propId || '', personaId: params.personaId || '', nota: '', hecha: false };
+  const props = (await todos('props')).sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
+  const personas = (await todos('personas')).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  titulo(params.id ? 'Editar tarea' : 'Nueva tarea');
+  main.innerHTML = `<form id="f">
+    <label>Tipo</label><select name="tipo">${TIPOS_TAREA.map(x => `<option ${x === t.tipo ? 'selected' : ''}>${x}</option>`).join('')}</select>
+    <div class="fila"><div><label>Fecha</label><input type="date" name="fecha" value="${esc(t.fecha)}" required></div>
+      <div><label>Hora</label><input type="time" name="hora" value="${esc(t.hora)}"></div></div>
+    <label>Propiedad</label><select name="propId"><option value="">— Ninguna —</option>
+      ${props.map(p => `<option value="${p.id}" ${p.id === t.propId ? 'selected' : ''}>${esc(codigoTxt(p) + ' ' + p.titulo)}</option>`).join('')}</select>
+    <label>Persona</label><select name="personaId"><option value="">— Ninguna —</option>
+      ${personas.map(x => `<option value="${x.id}" ${x.id === t.personaId ? 'selected' : ''}>${esc(x.nombre)} (${esc(x.rol)})</option>`).join('')}</select>
+    <label>Nota</label><textarea name="nota" placeholder="Ej. llevar llaves, confirmar el día antes">${esc(t.nota)}</textarea>
+    <label class="check"><input type="checkbox" name="hecha" ${t.hecha ? 'checked' : ''}> Hecha</label>
+    <button class="btn ancho">Guardar</button>
+    <button type="button" class="btn sec ancho" id="gcal">📅 Agregar a Google Calendar</button>
+    ${params.id ? '<button type="button" id="del" class="btn peligro ancho">Eliminar tarea</button>' : ''}
+  </form>`;
+  const leer = () => { const v = Object.fromEntries(new FormData($('#f'))); v.hecha = !!v.hecha; return Object.assign(t, v); };
+  $('#f').onsubmit = async e => {
+    e.preventDefault(); leer();
+    await guardar('tareas', t);
+    agendaDia = t.fecha; aviso('Tarea guardada'); volver();
+  };
+  $('#gcal').onclick = () => {
+    leer();
+    window.open(linkGoogleCalendar(t, props.find(p => p.id === t.propId), personas.find(x => x.id === t.personaId)), '_blank', 'noopener');
+  };
+  if (params.id) $('#del').onclick = async () => {
+    if (!confirm('¿Eliminar esta tarea?')) return;
+    await borrar('tareas', t.id); aviso('Tarea eliminada'); volver();
+  };
+};
 
 // ---------- Newsletter ----------
 function lineaProp(p, conLink = true, extra = '') {
@@ -689,6 +932,7 @@ VISTAS.persona = async (main, { id }) => {
         ${x.telefono ? `<a class="btn" href="tel:${esc(x.telefono)}">📞 Llamar</a>` : ''}
         ${wa ? `<a class="btn" href="https://wa.me/${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
         ${x.email ? `<a class="btn sec" href="mailto:${esc(x.email)}">✉️ Correo</a>` : ''}
+        <button class="btn sec" id="agendarPersona">📅 Agendar</button>
       </div></div>
     <div class="seccion"><h2>Propiedades</h2><div class="lista" id="lp"></div></div>`;
   const lista = [...suyas.map(p => [p, 'Dueño']), ...(interes && !suyas.includes(interes) ? [[interes, 'Interesado']] : [])];
@@ -700,6 +944,7 @@ VISTAS.persona = async (main, { id }) => {
     $('#lp').appendChild(b);
   });
   $('#editar').onclick = () => ir('editarPersona', { id });
+  $('#agendarPersona').onclick = () => ir('editarTarea', { personaId: id, propId: x.propId || '', tipo: 'Visita' });
 };
 
 VISTAS.editarPersona = async (main, { id }) => {
@@ -741,6 +986,7 @@ VISTAS.ajustes = async (main) => {
   titulo('Ajustes');
   const cfg = await ajustes();
   const gh = await tokenGitHub();
+  const ufHoy = await valorUF();
   let uso = '';
   if (navigator.storage && navigator.storage.estimate) {
     const e = await navigator.storage.estimate();
@@ -753,6 +999,7 @@ VISTAS.ajustes = async (main) => {
       <label>Teléfono de contacto</label><input name="telefono" type="tel" value="${esc(cfg.telefono)}">
       <label>Correo de contacto</label><input name="email" type="email" value="${esc(cfg.email)}">
       <label>Hashtags</label><input name="hashtags" value="${esc(cfg.hashtags)}">
+      <label>Valor UF manual (solo si no carga solo; hoy: ${ufHoy ? '$' + ufHoy.toLocaleString('es-CL') : 'sin dato'})</label><input name="ufManual" inputmode="decimal" placeholder="ej. 39.850,12">
       <label class="check"><input type="checkbox" name="marcaAuto" ${cfg.marcaAuto ? 'checked' : ''}> Crear versión con marca de agua al agregar fotos</label>
       <button class="btn ancho">Guardar</button>
     </form>
@@ -776,6 +1023,11 @@ VISTAS.ajustes = async (main) => {
     e.preventDefault();
     const v = Object.fromEntries(new FormData(e.target));
     v.marcaAuto = !!v.marcaAuto;
+    if (num(v.ufManual) > 1000) {
+      await guardar('ajustes', { k: 'uf', v: num(v.ufManual), fecha: new Date().toISOString().slice(0, 10) });
+      ufCache = num(v.ufManual);
+    }
+    delete v.ufManual;
     await guardar('ajustes', { k: 'general', v });
     aviso('Ajustes guardados');
   };
@@ -876,7 +1128,7 @@ async function exportar() {
     if (m.blobMarca) m.blobMarca = await aB64(m.blobMarca);
   }
   const data = { app: 'kpropiedades', version: 1, fecha: new Date().toISOString(),
-    props: await todos('props'), personas: await todos('personas'), ajustes: (await todos('ajustes')).filter(a => a.k !== 'github'), media };
+    props: await todos('props'), personas: await todos('personas'), tareas: await todos('tareas'), ajustes: (await todos('ajustes')).filter(a => a.k !== 'github'), media };
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   const nombre = `respaldo_K_Propiedades_${new Date().toISOString().slice(0, 10)}.json`;
   const file = new File([blob], nombre, { type: 'application/json' });
@@ -894,6 +1146,7 @@ async function importar() {
     if (!confirm('Se agregarán y actualizarán los datos del respaldo. ¿Continuar?')) return;
     for (const p of data.props) await guardar('props', p);
     for (const x of data.personas) await guardar('personas', x);
+    for (const t of data.tareas || []) await guardar('tareas', t);
     for (const a of data.ajustes || []) await guardar('ajustes', a);
     for (const m of data.media) {
       m.blob = await deB64(m.blob);
@@ -908,5 +1161,5 @@ async function importar() {
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 history.replaceState({ n: 1 }, '');
-pila.push({ vista: 'propiedades', params: {} });
+pila.push({ vista: 'inicio', params: {} });
 pintar();

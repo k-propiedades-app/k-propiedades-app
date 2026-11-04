@@ -121,3 +121,61 @@ label { display: block; font-size: 13px; color: var(--gris); margin: 12px 0 4px;
 [hidden] { display: none !important; }
 .check input { flex: none; }
 .galeria .portada { position: absolute; left: 4px; bottom: 4px; font-size: 10px; background: var(--oro); color: #fff; padding: 1px 6px; border-radius: 4px; }
+
+/* ---- Tarjeta de propiedad estilo ficha ---- */
+.ficha-prop { display: block; width: 100%; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 16px; overflow: hidden; }
+.fp-foto { position: relative; aspect-ratio: 16/9; background: var(--oro-claro); display: grid; place-items: center; font-size: 40px; }
+.fp-foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fp-op { position: absolute; left: 10px; top: 10px; background: var(--oro); color: #fff; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 99px; }
+.fp-cuerpo { padding: 10px 14px 14px; }
+.fp-chips { margin-top: -4px; }
+.fp-cuerpo h3 { margin: 6px 0 2px; font-size: 17px; }
+.fp-precio { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; padding: 8px 10px; background: var(--fondo); border-radius: 10px; }
+.fp-precio b { font-size: 18px; }
+.fp-precio span { color: var(--gris); font-size: 14px; }
+.fp-specs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; text-align: center; }
+.fp-specs b { display: block; font-size: 15px; }
+.fp-specs small { color: var(--gris); font-size: 11px; }
+.fp-corredor { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--linea); font-size: 14px; }
+.fp-corredor small { color: var(--gris); }
+.chip.codigo { background: var(--tinta); color: var(--fondo); font-variant-numeric: tabular-nums; }
+
+/* ---- Panel ---- */
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+@media (min-width: 620px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
+.tile { text-align: left; font: inherit; color: inherit; background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 14px; padding: 12px; cursor: pointer; }
+.tile b { display: block; font-size: 28px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tile span { color: var(--gris); font-size: 13px; }
+.g-caja { position: relative; }
+.g-caja svg { width: 100%; height: auto; display: block; overflow: visible; }
+.g-barra { fill: var(--oro); }
+.g-col.activa .g-barra { fill: var(--oro-2); }
+.g-base { stroke: var(--linea); stroke-width: 1; }
+.g-eje { fill: var(--gris); font-size: 11px; text-anchor: middle; }
+.g-valor { fill: var(--tinta); font-size: 11px; font-weight: 600; text-anchor: middle; }
+.g-col { cursor: pointer; outline: none; }
+.g-tip { position: absolute; top: -6px; width: 120px; text-align: center; background: var(--tinta); color: var(--fondo); font-size: 12px; padding: 4px 6px; border-radius: 6px; pointer-events: none; }
+.g-tabla { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+.g-tabla td { padding: 4px 0; border-top: 1px solid var(--linea); }
+.g-tabla td:last-child { text-align: right; }
+details summary { cursor: pointer; margin-top: 6px; }
+
+/* ---- Agenda ---- */
+.semana-top { display: flex; justify-content: space-between; align-items: center; }
+.dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
+.dias button { font: inherit; color: var(--tinta); background: none; border: 0; border-radius: 10px; padding: 6px 0; display: flex; flex-direction: column; align-items: center; }
+.dias small { color: var(--gris); font-size: 11px; text-transform: capitalize; }
+.dias b { font-size: 17px; }
+.dias i { font-style: normal; color: var(--oro); font-size: 12px; height: 12px; line-height: 12px; letter-spacing: 1px; }
+.dias button.hoy b { color: var(--oro); }
+.dias button.activo { background: var(--oro); }
+.dias button.activo small, .dias button.activo b, .dias button.activo i { color: #fff; }
+.dia-titulo { font-size: 16px; margin: 4px 0 10px; }
+.tarea { display: flex; gap: 10px; align-items: flex-start; background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 12px; padding: 10px; }
+.tarea input { width: 22px; height: 22px; margin-top: 2px; accent-color: var(--oro); flex: none; }
+.tarea-info { flex: 1; min-width: 0; text-align: left; font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.tarea.hecha .tarea-info { opacity: .55; text-decoration: line-through; }
+#hoyLista { display: flex; flex-direction: column; gap: 8px; }
+.tabs button span { font-size: 11px; }
+.fp-foto.vacia { aspect-ratio: 16/5; font-size: 30px; }

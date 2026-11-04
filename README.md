@@ -3,6 +3,8 @@
 App web instalable (PWA) y open source para guardar y ver desde el celular las propiedades, propietarios, clientes, fotos (con y sin marca de agua), videos y documentos de K Propiedades.
 
 ## Qué hace
+- **Inicio**: panel con propiedades activas, en captación, cierres del mes, postventas pendientes, tareas de hoy y gráficos de captaciones y cierres por mes.
+- **Agenda**: semana con visitas, captaciones, llamadas y firmas; se pueden agregar a Google Calendar.
 - **Propiedades**: datos (rol, m², precio en CLP o UF, gastos comunes, contribuciones), búsqueda y filtro.
 - **Estado del proceso**: Captar, Captada, Disponible, Negociando, Arrendada o Vendida. Solo Disponible y Negociando aparecen en la vitrina. Al arrendar o vender aparece una ⭐ de **postventa** con su lista de pasos; la estrella se quita cuando todos están listos.
 - **Fotos**: desde la cámara o la galería. Al agregarlas crea sola la versión con el logo abajo a la derecha.
