@@ -1275,7 +1275,13 @@ async function importar() {
 }
 
 // ---------- Inicio ----------
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator) {
+  // Si llega una versión nueva mientras la app está abierta, se recarga sola una vez.
+  const habia = !!navigator.serviceWorker.controller;
+  let recargada = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (habia && !recargada) { recargada = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
+}
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 history.replaceState({ n: 1 }, '');
 pila.push({ vista: 'inicio', params: {} });

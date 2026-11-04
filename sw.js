@@ -1,10 +1,10 @@
 // Guarda la app en el celular para que funcione sin conexión.
-const CACHE = 'kprop-v15';
+const CACHE = 'kprop-v16';
 const ARCHIVOS = ['./', 'index.html', 'app.js', 'styles.css', 'manifest.webmanifest',
   'logo.png', 'sticker.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -15,9 +15,10 @@ self.addEventListener('activate', e => {
 
 // Primero la red (para recibir actualizaciones), si no hay señal usa la copia guardada.
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
+  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
+  // Pide siempre la versión vigente al servidor, sin usar copias viejas del navegador.
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' })
       .then(r => { const copia = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copia)); return r; })
       .catch(() => caches.match(e.request).then(r => r || caches.match('index.html')))
   );
