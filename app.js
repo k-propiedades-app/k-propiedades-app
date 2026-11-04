@@ -265,7 +265,7 @@ async function pintar() {
   const { vista, params } = pila[pila.length - 1];
   $('#atras').hidden = pila.length <= 1;
   const main = $('#vista');
-  main.innerHTML = '';
+  main.innerHTML = ''; main.classList.remove('ancha');
   await VISTAS[vista](main, params);
   window.scrollTo(0, 0);
 }
@@ -378,6 +378,7 @@ VISTAS.propiedades = async (main) => {
   const listar = () => {
     document.querySelectorAll('[data-modo]').forEach(b => b.classList.toggle('activo', b.dataset.modo === modo));
     $('#csv').hidden = modo !== 'tabla';
+    $('#vista').classList.toggle('ancha', modo === 'tabla');
     const q = $('#buscar').value.toLowerCase(), f = $('#filtro').value, ft = $('#fTipo').value, fo = $('#fOp').value;
     const vis = props.filter(p => (!ft || p.tipo === ft) && (!fo || p.operacion === fo) && (!f || (f === 'pv' ? postventaDe(p).pendiente : estadoDe(p) === f)) &&
       [p.titulo, p.direccion, p.comuna, p.rol, p.tipo, p.codigo, codigoTxt(p)].join(' ').toLowerCase().includes(q));
@@ -1201,9 +1202,23 @@ VISTAS.ajustes = async (main) => {
     e.preventDefault();
     const lista = [...$('#listaCorr').children].map(f => ({
       nombre: f.querySelector('[data-c=nombre]').value.trim(), telefono: f.querySelector('[data-c=telefono]').value.trim(),
-      email: f.querySelector('[data-c=email]').value.trim() })).filter(c => c.nombre);
-    await guardar('ajustes', { k: 'corredores', v: lista });
-    aviso('Corredores guardados. Publica la vitrina para que se vean.');
+      email: f.querySelector('[data-c=email]').value.trim(), original: f.dataset.original || '' })).filter(c => c.nombre);
+    // Si se cambió un nombre, las propiedades a su cargo pasan al nombre nuevo.
+    let movidas = 0;
+    const cambios = lista.filter(c => c.original && c.original !== c.nombre);
+    if (cambios.length) for (const p of await todos('props')) {
+      const c = cambios.find(x => x.original === p.corredor);
+      if (c) { p.corredor = c.nombre; await guardar('props', p); movidas++; }
+    }
+    // Un mismo nombre queda una sola vez (se juntan sus datos de contacto).
+    const unicos = [];
+    lista.forEach(({ original, ...c }) => {
+      const ya = unicos.find(x => x.nombre.toLowerCase() === c.nombre.toLowerCase());
+      if (ya) { ya.telefono = ya.telefono || c.telefono; ya.email = ya.email || c.email; } else unicos.push(c);
+    });
+    await guardar('ajustes', { k: 'corredores', v: unicos });
+    aviso(`Corredores guardados${movidas ? ` y ${movidas} propiedad(es) actualizadas` : ''}. Publica la vitrina para que se vean.`);
+    pintar();
   };
   $('#exp').onclick = exportar;
   $('#imp').onclick = importar;
@@ -1217,7 +1232,8 @@ VISTAS.ajustes = async (main) => {
 };
 
 function filaCorredor(c, i) {
-  return `<div class="corr-fila"><b class="sub">Corredor ${i + 1}</b>
+  return `<div class="corr-fila" data-original="${esc(c.nombre)}"><div class="corr-cab"><b class="sub">Corredor ${i + 1}</b>
+    <button type="button" class="btn sec" onclick="this.closest('.corr-fila').remove()">Quitar</button></div>
     <input data-c="nombre" placeholder="Nombre" value="${esc(c.nombre)}">
     <div class="fila"><input data-c="telefono" type="tel" placeholder="WhatsApp (+56 9 …)" value="${esc(c.telefono)}">
       <input data-c="email" type="email" placeholder="Correo" value="${esc(c.email)}"></div></div>`;

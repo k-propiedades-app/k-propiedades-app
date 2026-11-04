@@ -200,3 +200,7 @@ details summary { cursor: pointer; margin-top: 6px; }
 .tabla-datos tbody tr:hover td { background: color-mix(in srgb, var(--tarjeta) 85%, var(--oro)); }
 .mapa { margin: 10px 0; }
 .mapa iframe { width: 100%; height: 240px; border: 1px solid var(--linea); border-radius: 12px; display: block; margin-bottom: 8px; }
+
+main.ancha { max-width: 1400px; }
+.corr-cab { display: flex; justify-content: space-between; align-items: center; }
+.corr-cab .btn { padding: 4px 10px; font-size: 13px; }
