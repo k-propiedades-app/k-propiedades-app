@@ -4,104 +4,189 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>K Propiedades · Propiedades en arriendo y venta</title>
-  <meta name="description" content="Departamentos, casas y oficinas en arriendo y venta. Atención personalizada de K Propiedades.">
+  <meta name="description" content="Casas, departamentos, sitios, parcelas, locales y bodegas en arriendo y venta. Atención personalizada de K Propiedades.">
   <meta property="og:title" content="K Propiedades">
   <meta property="og:description" content="Propiedades en arriendo y venta. Escríbenos por WhatsApp.">
   <meta property="og:image" content="https://k-propiedades-app.github.io/k-propiedades-app/icons/icon-512.png">
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#1f1a14">
+  <meta name="theme-color" content="#14110d">
   <link rel="icon" href="../icons/icon-192.png">
   <style>
     :root {
-      --oro: #b8892f; --oro-2: #8f6a22; --oro-claro: #f6eedc; --tinta: #1f1a14; --gris: #6b645b;
-      --linea: #e6e0d6; --fondo: #faf8f4; --tarjeta: #fff; --wa: #1f9d55;
+      --oro: #b8892f; --oro-2: #8f6a22; --oro-luz: #e2c27a; --oro-claro: #f6eedc; --tinta: #1f1a14; --gris: #6b645b;
+      --linea: #e6e0d6; --fondo: #faf8f4; --tarjeta: #fff; --wa: #1f9d55; --noche: #14110d; --banda: #24201b;
+      --dorado: linear-gradient(135deg, #8f6a22, #d4ad5c 55%, #a87c2a);
     }
     @media (prefers-color-scheme: dark) {
       :root { --tinta: #f2ede4; --gris: #b3aa9d; --linea: #3a342c; --fondo: #15120e; --tarjeta: #221d17; --oro-claro: #3a2f1c; }
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     html, body { margin: 0; }
     body { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: var(--tinta); }
     a { color: inherit; }
-    .hero { background: #1f1a14; color: #fff; padding: 28px 16px 26px; text-align: center; }
-    .hero img { width: 92px; background: #fff; border-radius: 16px; padding: 8px; }
-    .hero h1 { font-size: 24px; margin: 12px 0 4px; letter-spacing: .2px; }
-    .hero p { margin: 0 auto; color: #d9cfbf; max-width: 520px; }
-    .contacto { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 600;
       border: 0; border-radius: 10px; padding: 11px 16px; text-decoration: none; cursor: pointer; background: var(--oro); color: #fff; }
     .btn.wa { background: var(--wa); }
-    .btn.sec { background: rgba(255,255,255,.12); color: #fff; }
     .btn.claro { background: var(--oro-claro); color: var(--tinta); }
-    main { max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; }
-    .filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-    .filtros select { flex: 1 1 150px; }
-    .filtros button, .filtros select { font: inherit; font-size: 15px; border: 1px solid var(--linea); background: var(--tarjeta); color: var(--tinta);
-      border-radius: 99px; padding: 8px 14px; }
-    .filtros button.activo { background: var(--oro); color: #fff; border-color: var(--oro); }
-    .grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-    .card { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 16px; overflow: hidden; cursor: pointer;
-      text-align: left; padding: 0; font: inherit; color: inherit; display: flex; flex-direction: column; }
-    .card .foto { aspect-ratio: 4/3; background: var(--oro-claro) center/cover no-repeat; position: relative; }
-    .card .foto.sinfoto { background-size: auto 55%; background-color: var(--oro-claro); }
-    .corr-card { padding: 8px 14px 0; font-size: 14px; font-weight: 600; }
-    .corr-card small { color: var(--gris); font-weight: 400; }
-    .corr-det { display: flex; align-items: center; gap: 12px; max-width: 900px; margin: 6px auto 0; padding: 12px 16px; background: var(--tarjeta);
-      border-top: 1px solid var(--linea); border-bottom: 1px solid var(--linea); }
-    .corr-av { width: 44px; height: 44px; border-radius: 50%; background: var(--oro); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 18px; flex: none; }
+    .btn.oro { background: var(--dorado); text-transform: uppercase; letter-spacing: .8px; font-size: 14px; }
+
+    /* Barra superior */
+    .top { background: var(--noche); color: #e9e1d2; font-size: 13px; }
+    .top .in { max-width: 1180px; margin: 0 auto; padding: 7px 16px; display: flex; gap: 6px 16px; flex-wrap: wrap; justify-content: center; }
+    .top a { text-decoration: none; }
+    .top .uf { color: var(--oro-luz); }
+
+    /* Portada con fotos */
+    .hero { position: relative; min-height: 78vh; display: flex; flex-direction: column; color: #fff; background: var(--noche); overflow: hidden; }
+    .hero .fondo { position: absolute; inset: 0; background: center/cover no-repeat; opacity: 0; transition: opacity 1.4s ease; transform: scale(1.04); }
+    .hero .fondo.ver { opacity: 1; animation: acercar 9s ease-out forwards; }
+    @keyframes acercar { to { transform: scale(1.12); } }
+    .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,8,6,.7) 0%, rgba(10,8,6,.35) 35%, rgba(10,8,6,.8) 100%); }
+    .hero > * { position: relative; z-index: 1; }
+    nav { max-width: 1180px; width: 100%; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .marca { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .marca img { width: 46px; height: 46px; object-fit: contain; background: #fff; border-radius: 10px; padding: 4px; }
+    .marca span { font-size: 20px; letter-spacing: 3px; text-transform: uppercase; font-weight: 300; }
+    .marca b { font-weight: 700; }
+    .menu { display: flex; gap: 20px; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; }
+    .menu a { text-decoration: none; opacity: .9; }
+    .menu a:hover { color: var(--oro-luz); }
+    @media (max-width: 720px) { .menu { display: none; } }
+    .lema { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; text-align: center; padding: 30px 16px 22px; }
+    .lema h1 { margin: 0; font-size: clamp(26px, 5vw, 44px); font-weight: 600; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 2px 16px rgba(0,0,0,.5); }
+    .lema p { margin: 8px 0 0; color: #eadfcb; max-width: 560px; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+    .buscador { max-width: 1100px; width: calc(100% - 32px); margin: 0 auto 28px; background: rgba(20,17,13,.72); backdrop-filter: blur(6px);
+      border: 1px solid rgba(226,194,122,.35); border-radius: 14px; padding: 12px; display: grid; gap: 8px;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) auto minmax(0, .8fr); }
+    .buscador select, .buscador input { font: inherit; font-size: 15px; border: 0; border-radius: 8px; padding: 11px 12px; background: #fff; color: #1f1a14; min-width: 0; }
+    @media (max-width: 860px) { .buscador { grid-template-columns: 1fr 1fr; } .buscador .btn { grid-column: span 2; order: 9; } }
+
+    /* Secciones */
+    main { max-width: 1180px; margin: 0 auto; padding: 8px 16px 30px; }
+    .titulo { text-align: center; margin: 36px 0 22px; }
+    .titulo h2 { margin: 0; font-size: 24px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; }
+    .titulo h2 em { font-style: normal; color: var(--oro); }
+    .titulo::after { content: ""; display: block; width: 160px; height: 2px; margin: 12px auto 0; background: linear-gradient(90deg, transparent, var(--oro), transparent); }
+    .titulo p { color: var(--gris); margin: 10px 0 0; }
+    .grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 22px; }
+    .card { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 4px; overflow: hidden; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.06);
+      text-align: center; padding: 0; font: inherit; color: inherit; display: flex; flex-direction: column; transition: transform .2s, box-shadow .2s; }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,.12); }
+    .card .foto { aspect-ratio: 5/4; background: var(--oro-claro) center/cover no-repeat; position: relative; }
+    .card .foto.sinfoto { background-size: auto 55%; }
+    .etq { position: absolute; right: 12px; top: 12px; background: var(--dorado); color: #fff; font-size: 13px; font-weight: 600; padding: 4px 14px; border-radius: 2px; }
+    .etq.neg { right: auto; left: 12px; background: var(--noche); }
+    .cod { position: absolute; left: 12px; bottom: 10px; background: rgba(20,17,13,.7); color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 2px; }
+    .specs { background: var(--banda); color: #fff; display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 16px; padding: 9px 10px; font-size: 13px; font-weight: 600; min-height: 38px; }
+    .specs span { display: inline-flex; align-items: center; gap: 5px; }
+    .specs svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 1.6; }
+    .card .cuerpo { padding: 16px 14px 18px; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+    .card h3 { font-size: 18px; margin: 0; font-weight: 500; }
+    .card .sub { color: var(--gris); font-size: 14px; }
+    .card .precio { margin-top: 8px; font-weight: 700; color: var(--gris); letter-spacing: .5px; }
+    .corr-card { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--linea); font-size: 13px; color: var(--gris); }
+    .corr-card b { color: var(--tinta); font-weight: 600; }
+    .vacio { grid-column: 1 / -1; text-align: center; color: var(--gris); padding: 40px 10px; }
+
+    /* Equipo */
+    .equipo { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; }
+    .persona { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 4px; padding: 20px 18px; width: 240px; text-align: center; }
+    .persona .av { width: 84px; height: 84px; margin: 0 auto 10px; border-radius: 50%; background: var(--dorado); color: #fff; display: grid; place-items: center; font-size: 34px; font-weight: 600; }
+    .persona b { display: block; font-size: 17px; }
+    .persona small { color: var(--gris); display: block; margin-bottom: 12px; }
+    .persona .btns { display: flex; gap: 6px; justify-content: center; }
+    .persona .btn { padding: 9px 12px; font-size: 14px; }
+
+    /* Pie */
+    footer { background: var(--noche); color: #e9e1d2; margin-top: 40px; }
+    footer .in { max-width: 1180px; margin: 0 auto; padding: 34px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+    footer h4 { margin: 0 0 10px; font-size: 20px; font-weight: 500; color: #fff; }
+    footer p { margin: 4px 0; font-size: 14px; }
+    footer a { text-decoration: none; }
+    footer .chico { text-align: center; font-size: 12px; color: #9d9385; padding: 0 16px 26px; }
+    .flota { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 5; width: 56px; height: 56px; border-radius: 50%;
+      background: var(--wa); display: grid; place-items: center; box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+    .flota svg { width: 30px; height: 30px; fill: #fff; }
+
+    /* Detalle */
+    .det { position: fixed; inset: 0; z-index: 10; background: var(--fondo); overflow-y: auto; }
+    .det .barra { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 10px 16px; background: var(--noche); color: #fff; }
+    .det .barra button { font: inherit; background: none; border: 0; color: #fff; font-size: 16px; padding: 6px 0; cursor: pointer; }
+    .carrusel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; background: #000; max-width: 900px; margin: 0 auto; }
+    .carrusel img { flex: 0 0 100%; width: 100%; max-height: 70vh; object-fit: contain; scroll-snap-align: center; }
+    .contador { text-align: center; color: var(--gris); font-size: 13px; padding: 6px; }
+    .det .specs { max-width: 900px; margin: 0 auto; }
+    .corr-det { display: flex; align-items: center; gap: 12px; max-width: 900px; margin: 0 auto; padding: 12px 16px; background: var(--tarjeta);
+      border-bottom: 1px solid var(--linea); }
+    .corr-av { width: 44px; height: 44px; border-radius: 50%; background: var(--dorado); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 18px; flex: none; }
     .corr-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .corr-txt small { color: var(--gris); font-size: 13px; }
     .corr-btns { display: flex; gap: 6px; }
     .corr-btns .btn { padding: 10px 12px; }
-    .etq { position: absolute; left: 10px; top: 10px; background: var(--oro); color: #fff; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 99px; }
-    .etq.neg { left: auto; right: 10px; background: #1f1a14; }
-    .card .cuerpo { padding: 12px 14px 14px; }
-    .precio { font-size: 20px; font-weight: 700; }
-    .card h2 { font-size: 16px; margin: 2px 0 4px; font-weight: 600; }
-    .meta { color: var(--gris); font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
-    .vacio { text-align: center; color: var(--gris); padding: 50px 10px; }
-    .det { position: fixed; inset: 0; z-index: 10; background: var(--fondo); overflow-y: auto; }
-    .det .barra { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 8px;
-      padding: 10px 16px; background: #1f1a14; color: #fff; }
-    .det .barra button { font: inherit; background: none; border: 0; color: #fff; font-size: 16px; padding: 6px 0; }
-    .carrusel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; background: #000; max-width: 900px; margin: 0 auto; }
-    .carrusel img { flex: 0 0 100%; width: 100%; max-height: 70vh; object-fit: contain; scroll-snap-align: center; }
-    .contador { text-align: center; color: var(--gris); font-size: 13px; padding: 6px; }
-    .det .info { max-width: 900px; margin: 0 auto; padding: 4px 16px 110px; }
+    .det .info { max-width: 900px; margin: 0 auto; padding: 8px 16px 110px; }
     .det h1 { font-size: 22px; margin: 4px 0; }
+    .meta { color: var(--gris); font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
     .ficha { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 14px 0; }
-    .ficha div { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 12px; padding: 10px; }
+    .ficha div { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 8px; padding: 10px; }
     .ficha small { display: block; color: var(--gris); font-size: 12px; }
     .ficha b { font-size: 16px; }
     .desc { white-space: pre-wrap; }
     .accion { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; gap: 8px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
       background: var(--tarjeta); border-top: 1px solid var(--linea); }
     .accion .btn { flex: 1; }
-    footer { text-align: center; color: var(--gris); font-size: 13px; padding: 10px 16px 30px; }
   </style>
 </head>
 <body>
-  <header class="hero">
-    <img src="../logo.png" alt="K Propiedades">
-    <h1>Encuentra tu próxima propiedad</h1>
-    <p>Casas, departamentos, sitios, parcelas, locales comerciales y bodegas en venta y arriendo, con atención personalizada.</p>
-    <div class="contacto" id="contacto"></div>
-  </header>
-  <main>
-    <div class="filtros" id="filtros">
-      <select id="tipo" aria-label="Tipo de propiedad"><option value="">Todos los tipos</option>
+  <div class="top"><div class="in" id="top"></div></div>
+  <header class="hero" id="inicio">
+    <nav>
+      <a class="marca" href="#inicio"><img src="../logo.png" alt=""><span><b>K</b> Propiedades</span></a>
+      <div class="menu"><a href="#propiedades">Propiedades</a><a href="#equipo">Equipo</a><a href="#contacto">Contacto</a></div>
+    </nav>
+    <div class="lema">
+      <h1>Tu próximo hogar empieza aquí</h1>
+      <p>Casas, departamentos, sitios, parcelas, locales comerciales y bodegas en venta y arriendo, con atención personalizada.</p>
+    </div>
+    <form class="buscador" id="buscador">
+      <select id="operacion" aria-label="Operación"><option value="">Operación</option><option>Venta</option><option>Arriendo</option></select>
+      <select id="tipo" aria-label="Tipo de propiedad"><option value="">Tipo de propiedad</option>
         <option>Casa</option><option>Departamento</option><option>Sitio</option><option>Parcela</option><option>Local comercial</option><option>Bodega</option>
       </select>
-      <select id="operacion" aria-label="Venta o arriendo"><option value="">Venta y arriendo</option><option>Venta</option><option>Arriendo</option></select>
-      <select id="comuna" aria-label="Comuna"><option value="">Todas las comunas</option></select>
-    </div>
-    <div class="grilla" id="grilla"><p class="vacio">Cargando propiedades…</p></div>
+      <select id="comuna" aria-label="Comuna"><option value="">Comuna</option></select>
+      <button class="btn oro">Buscar</button>
+      <input id="codigo" inputmode="numeric" placeholder="Código" aria-label="Buscar por código">
+    </form>
+  </header>
+
+  <main>
+    <section id="propiedades">
+      <div class="titulo"><h2>Propiedades <em>disponibles</em></h2></div>
+      <div class="grilla" id="grilla"><p class="vacio">Cargando propiedades…</p></div>
+    </section>
+    <section id="equipo" hidden>
+      <div class="titulo"><h2>Nuestro <em>equipo</em></h2><p>Te acompañamos en todo el proceso, de la primera visita a la entrega.</p></div>
+      <div class="equipo" id="listaEquipo"></div>
+    </section>
   </main>
-  <footer id="pie">K Propiedades</footer>
+
+  <footer id="contacto">
+    <div class="in">
+      <div><a class="marca" href="#inicio"><img src="../logo.png" alt=""><span><b>K</b> Propiedades</span></a>
+        <p style="margin-top:12px">Corretaje de propiedades con atención personalizada.</p></div>
+      <div><h4>Contáctanos</h4><div id="pieContacto"></div></div>
+    </div>
+    <div class="chico" id="pie">K Propiedades</div>
+  </footer>
+  <a class="flota" id="flota" target="_blank" rel="noopener" aria-label="Escríbenos por WhatsApp" hidden>
+    <svg viewBox="0 0 32 32"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3zm0 23.6c-2 0-3.9-.5-5.6-1.5l-.4-.2-3.9 1 1-3.8-.3-.4A10.6 10.6 0 1 1 16 26.6zm5.8-7.9c-.3-.2-1.9-.9-2.2-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.7 8.7 0 0 1-4.3-3.8c-.3-.6.3-.5 1-1.7.1-.2 0-.4 0-.5l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5.1 4.5 1.9.8 2.6.9 3.6.7.6-.1 1.9-.8 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.3z"/></svg>
+  </a>
 
   <script>
   'use strict';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const $ = s => document.getElementById(s);
   let datos = { propiedades: [], contacto: {} };
   // Acepta números como 110000, "110.000" o "5.200,5".
   const num = v => {
@@ -111,29 +196,65 @@
     return Number(/,\d{1,2}$/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t.replace(/[.,]/g, '')) || 0;
   };
   const precio = p => !num(p.precio) ? 'Consultar' : (p.moneda === 'UF' ? 'UF ' : '$') + num(p.precio).toLocaleString('es-CL') + (p.operacion === 'Arriendo' && p.moneda !== 'UF' ? ' /mes' : '');
+  const codigo = p => p.codigo ? 'Cód. ' + String(p.codigo).padStart(4, '0') : '';
   const wa = t => { let d = String(t || '').replace(/\D/g, ''); if (d.length === 9 && d[0] === '9') d = '56' + d; return d; };
   const linkWa = (msg, tel) => `https://wa.me/${wa(tel || datos.contacto.telefono)}?text=${encodeURIComponent(msg)}`;
-  const meta = p => [(p.m2util || p.m2total) && `${p.m2util || p.m2total} m²`, p.dorm && `${p.dorm} dorm.`, p.banos && `${p.banos} baño${p.banos > 1 ? 's' : ''}`, Number(p.estac) && `${p.estac} estac.`].filter(Boolean);
+  const ICO = {
+    util: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="14" height="11" rx="1"/><path d="M7 19h14V9"/></svg>',
+    total: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 8h3M18 8h3M3 16h3M18 16h3"/></svg>',
+    dorm: '<svg viewBox="0 0 24 24"><path d="M3 18V7M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.6"/></svg>',
+    bano: '<svg viewBox="0 0 24 24"><path d="M4 12h16v2a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM6 12V5a2 2 0 0 1 4 0M7 19l-1 2M17 19l1 2"/></svg>',
+    estac: '<svg viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5zM5 16v2M19 16v2M5 11h14"/></svg>'
+  };
+  const specs = p => [p.m2util && [ICO.util, p.m2util + ' m²'], p.m2total && [ICO.total, p.m2total + ' m²'], p.dorm && [ICO.dorm, p.dorm],
+    p.banos && [ICO.bano, p.banos], Number(p.estac) && [ICO.estac, p.estac]].filter(Boolean)
+    .map(([i, t]) => `<span>${i}${esc(t)}</span>`).join('');
+  const titular = p => [p.tipo, p.comuna && 'en ' + p.comuna].filter(Boolean).join(' ') || p.titulo;
 
   function contacto() {
     const c = datos.contacto;
-    document.getElementById('contacto').innerHTML =
-      (c.telefono ? `<a class="btn wa" href="${linkWa('Hola, vi la vitrina de K Propiedades y quiero más información.')}" target="_blank" rel="noopener">💬 WhatsApp</a>
-        <a class="btn sec" href="tel:${esc(c.telefono)}">📞 ${esc(c.telefono)}</a>` : '') +
-      (c.email ? `<a class="btn sec" href="mailto:${esc(c.email)}">✉️ Correo</a>` : '');
-    document.getElementById('pie').textContent = `K Propiedades${c.email ? ' · ' + c.email : ''}${datos.actualizado ? ' · Actualizado ' + new Date(datos.actualizado).toLocaleDateString('es-CL') : ''}`;
+    $('top').innerHTML = [c.email && `<a href="mailto:${esc(c.email)}">✉️ ${esc(c.email)}</a>`, c.telefono && `<a href="tel:${esc(c.telefono)}">📞 ${esc(c.telefono)}</a>`,
+      `<span>${new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}</span>`, '<span class="uf" id="uf"></span>'].filter(Boolean).join('');
+    $('pieContacto').innerHTML = [c.telefono && `<p>WhatsApp y teléfono: <a href="tel:${esc(c.telefono)}">${esc(c.telefono)}</a></p>`,
+      c.email && `<p>Correo: <a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>`].filter(Boolean).join('');
+    $('pie').textContent = `© ${new Date().getFullYear()} K Propiedades${datos.actualizado ? ' · Actualizado ' + new Date(datos.actualizado).toLocaleDateString('es-CL') : ''}`;
+    if (c.telefono) { $('flota').href = linkWa('Hola, vi la vitrina de K Propiedades y quiero más información.'); $('flota').hidden = false; }
+    // Valor UF del día (si el servicio responde).
+    fetch('https://mindicador.cl/api/uf').then(r => r.json()).then(d => {
+      const v = d.serie && d.serie[0] && d.serie[0].valor;
+      if (v) $('uf').textContent = 'UF $' + v.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }).catch(() => {});
+  }
+  function equipo() {
+    const lista = datos.corredores && datos.corredores.length ? datos.corredores
+      : [...new Map(datos.propiedades.filter(p => p.corredor).map(p => [p.corredor.nombre, p.corredor])).values()];
+    if (!lista.length) return;
+    $('equipo').hidden = false;
+    $('listaEquipo').innerHTML = lista.map(c => `<div class="persona"><div class="av">${esc(c.nombre.charAt(0))}</div><b>${esc(c.nombre)}</b><small>Corredor de propiedades</small>
+      <div class="btns">${c.telefono ? `<a class="btn wa" target="_blank" rel="noopener" href="${linkWa(`Hola ${c.nombre}, vi la vitrina de K Propiedades y quiero más información.`, c.telefono)}">💬 WhatsApp</a>` : ''}
+      ${c.email ? `<a class="btn claro" aria-label="Correo" href="mailto:${esc(c.email)}">✉️</a>` : ''}</div></div>`).join('');
+  }
+  function portada() {
+    const fotos = datos.propiedades.map(p => p.fotos[0]).filter(Boolean).slice(0, 6);
+    if (!fotos.length) return;
+    const hero = $('inicio');
+    const capas = fotos.map(f => { const d = document.createElement('div'); d.className = 'fondo'; d.style.backgroundImage = `url('${f}')`; hero.prepend(d); return d; });
+    let i = 0; capas[0].classList.add('ver');
+    if (capas.length > 1) setInterval(() => { capas[i].classList.remove('ver'); i = (i + 1) % capas.length; capas[i].classList.add('ver'); }, 6000);
   }
   function listar() {
-    const com = document.getElementById('comuna').value, tipo = document.getElementById('tipo').value, op = document.getElementById('operacion').value;
-    const vis = datos.propiedades.filter(p => (!tipo || p.tipo === tipo) && (!op || p.operacion === op) && (!com || p.comuna === com));
-    const g = document.getElementById('grilla');
-    if (!vis.length) { g.innerHTML = `<p class="vacio">${datos.propiedades.length ? 'No hay propiedades con ese filtro.' : 'Pronto publicaremos nuevas propiedades.<br>Escríbenos y te ayudamos a encontrar la tuya.'}</p>`; return; }
+    const com = $('comuna').value, tipo = $('tipo').value, op = $('operacion').value, cod = $('codigo').value.replace(/\D/g, '');
+    const vis = datos.propiedades.filter(p => cod ? Number(p.codigo) === Number(cod)
+      : (!tipo || p.tipo === tipo) && (!op || p.operacion === op) && (!com || p.comuna === com));
+    const g = $('grilla');
+    if (!vis.length) { g.innerHTML = `<p class="vacio">${datos.propiedades.length ? 'No hay propiedades con esa búsqueda. Escríbenos y te ayudamos a encontrar la tuya.' : 'Pronto publicaremos nuevas propiedades.<br>Escríbenos y te ayudamos a encontrar la tuya.'}</p>`; return; }
     g.innerHTML = vis.map(p => `<button class="card" data-id="${esc(p.id)}">
       <div class="foto${p.fotos[0] ? '' : ' sinfoto'}" style="background-image:url('${p.fotos[0] ? esc(p.fotos[0]) : '../logo.png'}')">
-        <span class="etq">${esc(p.operacion)}</span>${p.estado === 'Negociando' ? '<span class="etq neg">En negociación</span>' : ''}</div>
-      ${p.corredor ? `<div class="corr-card">👤 ${esc(p.corredor.nombre)} <small>· Corredor a cargo</small></div>` : ''}
-      <div class="cuerpo"><div class="precio">${precio(p)}</div><h2>${esc(p.titulo)}</h2>
-      <div class="meta">${[p.comuna, ...meta(p)].filter(Boolean).map(esc).map(x => `<span>${x}</span>`).join('')}</div></div></button>`).join('');
+        <span class="etq">${esc(p.operacion)}</span>${p.estado === 'Negociando' ? '<span class="etq neg">En negociación</span>' : ''}
+        ${p.codigo ? `<span class="cod">${codigo(p)}</span>` : ''}</div>
+      <div class="specs">${specs(p)}</div>
+      <div class="cuerpo"><h3>${esc(titular(p))}</h3><div class="sub">${esc(p.titulo)}</div><div class="precio">${precio(p)}</div>
+      ${p.corredor ? `<div class="corr-card">👤 <b>${esc(p.corredor.nombre)}</b> · Corredor a cargo</div>` : ''}</div></button>`).join('');
     g.querySelectorAll('.card').forEach(b => b.onclick = () => { location.hash = 'p=' + b.dataset.id; });
   }
   function detalle(id) {
@@ -141,13 +262,15 @@
     const p = datos.propiedades.find(x => x.id === id);
     if (!p) return;
     document.title = `${p.titulo} · K Propiedades`;
-    const ficha = [['Precio', precio(p)], ['Operación', p.operacion], ['Tipo', p.tipo], ['Comuna', p.comuna], ['m² útiles', p.m2util], ['m² totales', p.m2total],
+    const ficha = [['Precio', precio(p)], ['Código', codigo(p)], ['Operación', p.operacion], ['Tipo', p.tipo], ['Comuna', p.comuna], ['m² útiles', p.m2util], ['m² totales', p.m2total],
       ['Dormitorios', p.dorm], ['Baños', p.banos], ['Estacionam.', Number(p.estac) ? p.estac : ''], ['Bodegas', Number(p.bodega) ? p.bodega : ''],
       ['Gastos comunes', num(p.gastosComunes) && '$' + num(p.gastosComunes).toLocaleString('es-CL')]].filter(f => f[1]);
+    const tel = (p.corredor && p.corredor.telefono) || datos.contacto.telefono;
     const d = document.createElement('div'); d.className = 'det';
     d.innerHTML = `<div class="barra"><button id="cerrar">‹ Volver</button><button id="compartir">Compartir ↗</button></div>
-      ${p.fotos.length ? `<div class="carrusel" id="car">${p.fotos.map((f, i) => `<img src="${esc(f)}" alt="Foto ${i + 1} de ${esc(p.titulo)}" loading="${i ? 'lazy' : 'eager'}">`).join('')}</div>
-      <div class="contador" id="cont">1 / ${p.fotos.length} · desliza para ver más</div>` : ''}
+      ${p.fotos.length ? `<div class="carrusel" id="car">${p.fotos.map((f, i) => `<img src="${esc(f)}" alt="Foto ${i + 1} de ${esc(p.titulo)}" loading="${i ? 'lazy' : 'eager'}">`).join('')}</div>` : ''}
+      <div class="specs">${specs(p)}</div>
+      ${p.fotos.length > 1 ? `<div class="contador" id="cont">1 / ${p.fotos.length} · desliza para ver más</div>` : ''}
       ${p.corredor ? `<div class="corr-det"><div class="corr-av">${esc(p.corredor.nombre.charAt(0))}</div>
         <div class="corr-txt"><b>${esc(p.corredor.nombre)}</b><small>Corredor a cargo</small>
           ${p.corredor.telefono ? `<small>${esc(p.corredor.telefono)}</small>` : ''}</div>
@@ -164,11 +287,12 @@
         ${p.descripcion ? `<p class="desc">${esc(p.descripcion)}</p>` : ''}
       </div>
       <div class="accion">
-        ${(p.corredor && p.corredor.telefono) || datos.contacto.telefono ? (tel => `<a class="btn wa" target="_blank" rel="noopener" href="${linkWa(`Hola, me interesa "${p.titulo}" (${p.operacion}, ${precio(p)}). ¿Está disponible? ${location.href}`, tel)}">💬 Me interesa</a>
-        <a class="btn claro" href="tel:${esc(tel)}">📞 Llamar</a>`)((p.corredor && p.corredor.telefono) || datos.contacto.telefono) : ''}
+        ${tel ? `<a class="btn wa" target="_blank" rel="noopener" href="${linkWa(`Hola, me interesa "${p.titulo}" (${p.operacion}, ${precio(p)}${p.codigo ? ', ' + codigo(p) : ''}). ¿Está disponible? ${location.href}`, tel)}">💬 Me interesa</a>
+        <a class="btn claro" href="tel:${esc(tel)}">📞 Llamar</a>` : ''}
       </div>`;
     document.body.appendChild(d);
     document.body.style.overflow = 'hidden';
+    $('flota').hidden = true;
     d.querySelector('#cerrar').onclick = () => { history.length > 1 && location.hash ? history.back() : (location.hash = ''); };
     d.querySelector('#compartir').onclick = async () => {
       const url = location.href;
@@ -176,16 +300,18 @@
       try { await navigator.clipboard.writeText(url); alert('Link copiado'); } catch (e) { prompt('Copia el link:', url); }
     };
     const car = d.querySelector('#car');
-    if (car) car.onscroll = () => { d.querySelector('#cont').textContent = `${Math.round(car.scrollLeft / car.clientWidth) + 1} / ${p.fotos.length}`; };
+    if (car && p.fotos.length > 1) car.onscroll = () => { d.querySelector('#cont').textContent = `${Math.round(car.scrollLeft / car.clientWidth) + 1} / ${p.fotos.length}`; };
   }
   function ruta() {
     const m = location.hash.match(/p=([\w-]+)/);
-    if (m) detalle(m[1]);
-    else { document.querySelectorAll('.det').forEach(d => d.remove()); document.body.style.overflow = ''; document.title = 'K Propiedades · Propiedades en arriendo y venta'; }
+    if (m) return detalle(m[1]);
+    document.querySelectorAll('.det').forEach(d => d.remove()); document.body.style.overflow = '';
+    document.title = 'K Propiedades · Propiedades en arriendo y venta';
+    if (datos.contacto.telefono) $('flota').hidden = false;
   }
-  document.getElementById('tipo').onchange = listar;
-  document.getElementById('operacion').onchange = listar;
-  document.getElementById('comuna').onchange = listar;
+  ['tipo', 'operacion', 'comuna'].forEach(id => $(id).onchange = () => { $('codigo').value = ''; listar(); });
+  $('codigo').oninput = listar;
+  $('buscador').onsubmit = e => { e.preventDefault(); listar(); $('propiedades').scrollIntoView({ behavior: 'smooth' }); };
   window.addEventListener('hashchange', ruta);
 
   fetch('datos/propiedades.json', { cache: 'no-cache' })
@@ -194,11 +320,10 @@
     .then(d => {
       datos = d; datos.propiedades = datos.propiedades || []; datos.contacto = datos.contacto || {};
       const comunas = [...new Set(datos.propiedades.map(p => p.comuna).filter(Boolean))].sort();
-      const sel = document.getElementById('tipo'), ya = [...sel.options].map(o => o.value);
+      const sel = $('tipo'), ya = [...sel.options].map(o => o.value);
       [...new Set(datos.propiedades.map(p => p.tipo))].filter(t => t && !ya.includes(t)).forEach(t => sel.add(new Option(t)));
-      document.getElementById('comuna').innerHTML += comunas.map(c => `<option>${esc(c)}</option>`).join('');
-      document.getElementById('comuna').hidden = comunas.length < 2;
-      contacto(); listar(); ruta();
+      $('comuna').innerHTML += comunas.map(c => `<option>${esc(c)}</option>`).join('');
+      contacto(); portada(); listar(); equipo(); ruta();
     });
   </script>
 </body>

@@ -1133,7 +1133,7 @@ async function publicarVitrina(boton) {
         }
       }
       publicas.push({
-        id: p.id, titulo: p.titulo, tipo: p.tipo, operacion: p.operacion, estado: estadoDe(p), comuna: p.comuna || '',
+        id: p.id, codigo: p.codigo || '', titulo: p.titulo, tipo: p.tipo, operacion: p.operacion, estado: estadoDe(p), comuna: p.comuna || '',
         ubicacion: p.ubicacionPublica || '', precio: num(p.precio) || '', moneda: p.moneda, m2util: p.m2util || '', m2total: p.m2total || '',
         dorm: p.dorm || '', banos: p.banos || '', estac: p.estac || '', bodega: p.bodega || '', gastosComunes: num(p.gastosComunes) || '',
         descripcion: p.descripcion || '', fotos: rutas,
@@ -1142,7 +1142,8 @@ async function publicarVitrina(boton) {
     }
     // Quita de la vitrina las fotos que ya no se usan.
     existentes.forEach(r => { if (!usadas.has(r)) cambios.push({ path: r, mode: '100644', type: 'blob', sha: null }); });
-    const datos = { actualizado: new Date().toISOString(), contacto: { nombre: cfg.corredora, telefono: cfg.telefono, email: cfg.email }, propiedades: publicas };
+    const datos = { actualizado: new Date().toISOString(), contacto: { nombre: cfg.corredora, telefono: cfg.telefono, email: cfg.email },
+      corredores: corrs.map(c => ({ nombre: c.nombre, telefono: c.telefono || '', email: c.email || '' })), propiedades: publicas };
     cambios.push({ path: 'vitrina/datos/propiedades.json', mode: '100644', type: 'blob', content: JSON.stringify(datos, null, 1) });
     boton.textContent = 'Publicando…';
     const nuevoArbol = await api(token, 'git/trees', 'POST', { base_tree: commit.tree.sha, tree: cambios });
