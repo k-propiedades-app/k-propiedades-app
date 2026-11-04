@@ -343,12 +343,47 @@ VISTAS.propiedades = async (main) => {
     </div>
     <div class="resumen">${ESTADOS.map(e => `<span>${e} <b>${props.filter(p => estadoDe(p) === e).length}</b></span>`).join('')}
       <span>⭐ Postventa <b>${props.filter(p => postventaDe(p).pendiente).length}</b></span></div>
+    <div class="modo-vista"><div class="seg" role="group" aria-label="Forma de ver">
+      <button data-modo="tabla">▦ Tabla</button><button data-modo="tarjetas">▤ Tarjetas</button></div>
+      <button class="btn sec" id="csv">⬇ Excel</button></div>
     <div class="lista" id="lista"></div>`;
+  let modo = 'tabla', orden = { k: 'codigo', asc: false };
+  try { modo = localStorage.getItem('vistaProps') || 'tabla'; } catch (e) {}
+  // Columnas de la tabla: [título, valor para mostrar, valor para ordenar]
+  const COLS = [
+    ['Cód.', p => codigoTxt(p).replace('Cód. ', ''), p => p.codigo || 0],
+    ['Nombre', p => p.titulo || p.tipo], ['Tipo', p => p.tipo], ['Operación', p => p.operacion], ['Estado', p => estadoDe(p) + (postventaDe(p).pendiente ? ' ⭐' : '')],
+    ['Región', p => p.region || regionDe(p.comuna)], ['Comuna', p => p.comuna], ['Dirección', p => p.direccion],
+    ['Precio', p => precioTxt(p), p => num(p.precio) * (p.moneda === 'UF' ? (uf || 40000) : 1)], ['Equivale', p => preciosDobles(p, uf).otro || ''],
+    ['m² útiles', p => p.m2util, p => num(p.m2util)], ['m² totales', p => p.m2total, p => num(p.m2total)], ['Hectáreas', p => hectareasTxt(p), p => hectareasNum(p.hectareas)],
+    ['Dorm.', p => p.dorm, p => num(p.dorm)], ['Baños', p => p.banos, p => num(p.banos)], ['Estac.', p => p.estac, p => num(p.estac)],
+    ['Gastos com.', p => num(p.gastosComunes) ? plata(p.gastosComunes) : '', p => num(p.gastosComunes)], ['Rol', p => p.rol],
+    ['Corredor', p => p.corredor], ['Vitrina', p => enVitrina(p) ? '🌐 Sí' : ''], ['Fotos', p => fotos.filter(m => m.propId === p.id).length || '', p => fotos.filter(m => m.propId === p.id).length],
+    ['Creada', p => p.creado ? new Date(p.creado).toLocaleDateString('es-CL') : '', p => p.creado || 0]
+  ];
+  let visibles = [];
+  const tabla = vis => {
+    const c = COLS.find(x => x[0] === orden.k) || COLS[0], val = c[2] || c[1];
+    vis = [...vis].sort((a, b) => { const x = val(a), y = val(b);
+      const r = typeof x === 'number' && typeof y === 'number' ? x - y : String(x ?? '').localeCompare(String(y ?? ''), 'es', { numeric: true });
+      return orden.asc ? r : -r; });
+    $('#lista').innerHTML = `<div class="tabla-envoltura"><table class="tabla-datos"><thead><tr>${COLS.map(([t]) =>
+      `<th data-k="${t}">${t}${t === orden.k ? (orden.asc ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>
+      <tbody>${vis.map(p => `<tr data-id="${p.id}">${COLS.map(([t, f]) => `<td>${esc(f(p) ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      <p class="sub">${vis.length} propiedad(es). Toca un título para ordenar y una fila para abrir la ficha.</p>`;
+    $('#lista').querySelectorAll('th').forEach(th => th.onclick = () => {
+      orden = { k: th.dataset.k, asc: orden.k === th.dataset.k ? !orden.asc : true }; listar(); });
+    $('#lista').querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => ir('propiedad', { id: tr.dataset.id }));
+  };
   const listar = () => {
+    document.querySelectorAll('[data-modo]').forEach(b => b.classList.toggle('activo', b.dataset.modo === modo));
+    $('#csv').hidden = modo !== 'tabla';
     const q = $('#buscar').value.toLowerCase(), f = $('#filtro').value, ft = $('#fTipo').value, fo = $('#fOp').value;
     const vis = props.filter(p => (!ft || p.tipo === ft) && (!fo || p.operacion === fo) && (!f || (f === 'pv' ? postventaDe(p).pendiente : estadoDe(p) === f)) &&
       [p.titulo, p.direccion, p.comuna, p.rol, p.tipo, p.codigo, codigoTxt(p)].join(' ').toLowerCase().includes(q));
+    visibles = vis;
     $('#lista').innerHTML = vis.length ? '' : `<p class="vacio">${props.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay propiedades.<br>Toca + para agregar la primera.'}</p>`;
+    if (vis.length && modo === 'tabla') return tabla(vis);
     vis.forEach(p => {
       const foto = portadaDe(p, fotos.filter(m => m.propId === p.id));
       const b = document.createElement('button'); b.className = 'ficha-prop';
@@ -368,7 +403,18 @@ VISTAS.propiedades = async (main) => {
       $('#lista').appendChild(b);
     });
   };
-  $('#buscar').oninput = listar; $('#filtro').onchange = listar; $('#fTipo').onchange = listar; $('#fOp').onchange = listar; listar();
+  $('#buscar').oninput = listar; $('#filtro').onchange = listar; $('#fTipo').onchange = listar; $('#fOp').onchange = listar;
+  document.querySelectorAll('[data-modo]').forEach(b => b.onclick = () => {
+    modo = b.dataset.modo; try { localStorage.setItem('vistaProps', modo); } catch (e) {} listar(); });
+  // Descarga lo que se ve en la tabla como archivo para Excel.
+  $('#csv').onclick = () => {
+    const celda = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const filas = [COLS.map(c => c[0]), ...visibles.map(p => COLS.map(c => c[1](p)))].map(f => f.map(celda).join(';')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + filas], { type: 'text/csv;charset=utf-8' }));
+    a.download = `propiedades_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+  };
+  listar();
   $('#irNews').onclick = () => ir('newsletter', {});
   fab(() => ir('editarProp', {}));
 };
@@ -479,6 +525,10 @@ VISTAS.propiedad = async (main, { id }) => {
         ${fila('Gastos com.', num(p.gastosComunes) && plata(p.gastosComunes))}
         ${fila('Contribuc.', num(p.contribuciones) && plata(p.contribuciones))}
       </dl>
+      ${p.direccion || p.comuna ? (q => `<div class="mapa"><iframe title="Mapa" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+          src="https://maps.google.com/maps?q=${q}&z=${p.direccion ? 16 : 12}&output=embed"></iframe>
+        <a class="btn sec ancho" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">🗺️ Abrir en Google Maps</a></div>`)(
+        encodeURIComponent([p.direccion, p.comuna, 'Chile'].filter(Boolean).join(', '))) : ''}
       ${p.notas ? `<p class="sub" style="white-space:pre-wrap">📝 ${esc(p.notas)}</p>` : ''}
     </div>
 
