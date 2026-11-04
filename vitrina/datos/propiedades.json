@@ -1,5 +1,30 @@
 {
- "actualizado": "2026-11-03T23:00:00.000Z",
- "contacto": { "nombre": "K Propiedades", "telefono": "+56 9 3499 7313", "email": "kliberona.b@gmail.com" },
- "propiedades": []
+ "actualizado": "2026-11-04T00:11:30.237Z",
+ "contacto": {
+  "nombre": "K Propiedades",
+  "telefono": "+56 9 3499 7313",
+  "email": "kliberona.b@gmail.com"
+ },
+ "propiedades": [
+  {
+   "id": "mw1csm1zths3l",
+   "titulo": "Depto Edificio Mistral",
+   "tipo": "Departamento",
+   "operacion": "Venta",
+   "estado": "Disponible",
+   "comuna": "Temuco",
+   "ubicacion": "A pasos del mall portal Temuco",
+   "precio": "105000000",
+   "moneda": "CLP",
+   "m2util": "",
+   "m2total": "50",
+   "dorm": "3",
+   "banos": "2",
+   "estac": "1",
+   "bodega": "0",
+   "gastosComunes": "110.000",
+   "descripcion": "Se vende depto Avenida Gabriela Mistral",
+   "fotos": []
+  }
+ ]
 }
