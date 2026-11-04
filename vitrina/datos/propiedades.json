@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-04T02:58:00.096Z",
+ "actualizado": "2026-11-04T03:13:01.103Z",
  "contacto": {
   "nombre": "K Propiedades",
   "telefono": "+56 9 3499 7313",
@@ -7,12 +7,12 @@
  },
  "corredores": [
   {
-   "nombre": "Karen",
+   "nombre": "Karen Liberona",
    "telefono": "+56 9 3499 7313",
    "email": "kliberona.b@gmail.com"
   },
   {
-   "nombre": "Alvaro",
+   "nombre": "Álvaro Silva",
    "telefono": "+56966931397",
    "email": "silva.garcia.a@gmail.com"
   }
@@ -39,9 +39,11 @@
    "bodega": "",
    "gastosComunes": "",
    "descripcion": "Hermosa pacela de casi 1ha en camino Villarrica-Pucón, con agua, luz... legar y construir.",
-   "fotos": [],
+   "fotos": [
+    "datos/fotos/mw1jflr0z0fxd.jpg"
+   ],
    "corredor": {
-    "nombre": "Alvaro",
+    "nombre": "Álvaro Silva",
     "telefono": "+56966931397",
     "email": "silva.garcia.a@gmail.com"
    }
@@ -70,7 +72,11 @@
    "fotos": [
     "datos/fotos/mw1d6z0i0p39u.jpg"
    ],
-   "corredor": null
+   "corredor": {
+    "nombre": "Karen Liberona",
+    "telefono": "+56 9 3499 7313",
+    "email": "kliberona.b@gmail.com"
+   }
   }
  ]
 }
