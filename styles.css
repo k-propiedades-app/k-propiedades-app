@@ -205,3 +205,7 @@ details summary { cursor: pointer; margin-top: 6px; }
 main.ancha { max-width: 1400px; }
 .corr-cab { display: flex; justify-content: space-between; align-items: center; }
 .corr-cab .btn { padding: 4px 10px; font-size: 13px; }
+.resumen button { background: none; border: 1px solid transparent; border-radius: 99px; padding: 3px 8px; margin: -3px -8px; font: inherit; color: inherit; cursor: pointer; }
+.resumen button:hover { border-color: var(--linea); background: var(--oro-claro); }
+.resumen button.activo { background: var(--oro); border-color: var(--oro); color: #fff; }
+.resumen button.activo b { color: #fff; }

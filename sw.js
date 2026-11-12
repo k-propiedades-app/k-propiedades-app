@@ -1,5 +1,5 @@
 // Guarda la app en el celular para que funcione sin conexión.
-const CACHE = 'kprop-v29';
+const CACHE = 'kprop-v30';
 const ARCHIVOS = ['./', 'index.html', 'app.js', 'styles.css', 'manifest.webmanifest',
   'logo.png', 'marca.png', 'sticker.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
