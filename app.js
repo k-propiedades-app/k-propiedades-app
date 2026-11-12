@@ -242,14 +242,17 @@ async function imagen(blob) {
 // Versión del logo de la marca de agua. Al cambiar el logo se sube este número
 // y las fotos guardadas se vuelven a marcar solas con el logo nuevo.
 const MARCA_V = 2;
-async function actualizarMarcas() {
-  const viejas = (await todos('media')).filter(m => m.kind === 'foto' && m.blobMarca && m.blob && (m.marcaV || 1) < MARCA_V);
-  if (!viejas.length) return;
+// todas = true vuelve a marcar todas las fotos (botón en Ajustes), aunque ya estén al día.
+async function actualizarMarcas(todas = false) {
+  const viejas = (await todos('media')).filter(m => m.kind === 'foto' && m.blob && (todas || (m.blobMarca && (m.marcaV || 1) < MARCA_V)));
+  if (!viejas.length) { if (todas) aviso('No hay fotos guardadas'); return 0; }
   aviso(`Poniendo el logo nuevo en ${viejas.length} foto(s)…`);
   for (const m of viejas) {
-    try { m.blobMarca = await procesarFoto(m.blob, true); m.marcaV = MARCA_V; await guardar('media', m); } catch (e) { /* se reintenta al abrir de nuevo */ }
+    // La versión sube siempre para que la vitrina reciba la foto con otro nombre.
+    try { m.blobMarca = await procesarFoto(m.blob, true); m.marcaV = Math.max(MARCA_V, (m.marcaV || 1) + (todas ? 1 : 0)); await guardar('media', m); } catch (e) { /* se reintenta al abrir de nuevo */ }
   }
   aviso('Logo nuevo listo en las fotos. Publica la vitrina para actualizarla.');
+  return viejas.length;
 }
 async function procesarFoto(blob, conMarca) {
   const img = await imagen(blob);
@@ -1221,6 +1224,9 @@ VISTAS.ajustes = async (main) => {
     <div class="seccion"><h2>Logo para videos</h2>
       <p class="sub" style="margin-top:0">Guárdalo en la galería y agrégalo como sticker de foto al publicar Reels o historias.</p>
       <a class="btn sec ancho" href="sticker.png" download="K_Propiedades_sticker.png">🏷️ Descargar sticker</a></div>
+    <div class="seccion"><h2>Marca de agua</h2>
+      <p class="sub" style="margin-top:0">Si alguna foto aún tiene el logo antiguo, este botón le pone el logo actual a todas. Después toca "Publicar en vitrina".</p>
+      <button class="btn sec ancho" id="remarcar">🔄 Poner logo actual en todas las fotos</button></div>
     <div class="seccion"><h2>Respaldo</h2>
       <p class="sub" style="margin-top:0">Los datos viven en este celular. ${uso} Haz un respaldo cada semana y súbelo a Google Drive.</p>
       <button class="btn ancho" id="exp">💾 Descargar respaldo</button>
@@ -1262,6 +1268,7 @@ VISTAS.ajustes = async (main) => {
     aviso(`Corredores guardados${movidas ? ` y ${movidas} propiedad(es) actualizadas` : ''}. Publica la vitrina para que se vean.`);
     pintar();
   };
+  $('#remarcar').onclick = async e => { e.target.disabled = true; await actualizarMarcas(true); e.target.disabled = false; };
   $('#exp').onclick = exportar;
   $('#imp').onclick = importar;
   $('#guardarToken').onclick = async () => {
@@ -1398,6 +1405,7 @@ async function importar() {
       await guardar('media', m);
     }
     aviso('Respaldo restaurado');
+    actualizarMarcas().catch(() => {}); // por si el respaldo trae fotos con el logo antiguo
   } catch (e) { alert('No pude leer ese archivo. ¿Es un respaldo de K Propiedades?'); }
 }
 
