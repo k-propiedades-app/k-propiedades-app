@@ -248,7 +248,7 @@ async function imagen(blob) {
 // Achica la foto (lado mayor 1600 px) y opcionalmente pone el logo al centro, en blanco semitransparente.
 // Versión del logo de la marca de agua. Al cambiar el logo se sube este número
 // y las fotos guardadas se vuelven a marcar solas con el logo nuevo.
-const MARCA_V = 3;
+const MARCA_V = 4;
 // todas = true vuelve a marcar todas las fotos (botón en Ajustes), aunque ya estén al día.
 async function actualizarMarcas(todas = false) {
   const viejas = (await todos('media')).filter(m => m.kind === 'foto' && m.blob && (todas || (m.blobMarca && (m.marcaV || 1) < MARCA_V)));
