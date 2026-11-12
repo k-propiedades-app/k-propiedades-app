@@ -168,18 +168,28 @@ async function asegurarCodigos(props) {
   }
 }
 // Valor de la UF: se consulta una vez al día; si no hay internet usa el último guardado o el ingresado a mano.
-let ufCache = null;
+let ufCache = null, ufConsulta = null;
+// Consulta la UF del día en internet (una sola vez por sesión, máximo 3 segundos).
+function consultarUF() {
+  if (!ufConsulta) ufConsulta = (async () => {
+    try {
+      const r = await fetch('https://mindicador.cl/api/uf', { cache: 'no-store', signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined });
+      const v = (await r.json()).serie[0].valor;
+      if (v > 1000) { await guardar('ajustes', { k: 'uf', v, fecha: new Date().toISOString().slice(0, 10) }); return (ufCache = v); }
+    } catch (e) { /* sin internet o servicio caído */ }
+    return null;
+  })();
+  return ufConsulta;
+}
 async function valorUF() {
   if (ufCache) return ufCache;
-  const hoy = new Date().toISOString().slice(0, 10);
   const g = await uno('ajustes', 'uf');
-  if (g && g.v && g.fecha === hoy) return (ufCache = g.v);
-  try {
-    const r = await fetch('https://mindicador.cl/api/uf', { cache: 'no-store' });
-    const v = (await r.json()).serie[0].valor;
-    if (v > 1000) { await guardar('ajustes', { k: 'uf', v, fecha: hoy }); return (ufCache = v); }
-  } catch (e) { /* sin internet o servicio caído */ }
-  return g && g.v ? (ufCache = g.v) : null;
+  if (g && g.v) {
+    // Hay un valor guardado: se usa al tiro y, si no es de hoy, se actualiza por detrás.
+    if (g.fecha !== new Date().toISOString().slice(0, 10)) consultarUF();
+    return (ufCache = g.v);
+  }
+  return await consultarUF();
 }
 // Una propiedad puede ser para arriendo, venta o ambas ("Venta o Arriendo").
 // En ambas, precio/moneda es el de venta y precioArriendo/monedaArriendo el de arriendo.
@@ -257,6 +267,8 @@ async function actualizarMarcas(todas = false) {
   for (const m of viejas) {
     // La versión sube siempre para que la vitrina reciba la foto con otro nombre.
     try { m.blobMarca = await procesarFoto(m.blob, true); m.marcaV = Math.max(MARCA_V, (m.marcaV || 1) + (todas ? 1 : 0)); await guardar('media', m); } catch (e) { /* se reintenta al abrir de nuevo */ }
+    // Pausa entre fotos para que la app siga respondiendo mientras tanto.
+    await new Promise(r => setTimeout(r, 150));
   }
   aviso('Logo nuevo listo en las fotos. Publica la vitrina para actualizarla.');
   return viejas.length;
@@ -307,13 +319,22 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => irTab(b
 $('#atras').onclick = volver;
 
 const VISTAS = {};
-async function pintar() {
+// Las pantallas se dibujan de a una y en orden: si se toca otra pestaña mientras la
+// anterior aún carga, se espera a que termine y se muestra solo la última elegida.
+let _turno = 0, _cola = Promise.resolve();
+function pintar() {
+  const turno = ++_turno;
+  _cola = _cola.then(() => turno === _turno ? pintarYa() : null).catch(e => console.error(e));
+  return _cola;
+}
+async function pintarYa() {
   limpiarUrls();
   document.querySelectorAll('.fab, .visor').forEach(e => e.remove());
   const { vista, params } = pila[pila.length - 1];
   $('#atras').hidden = pila.length <= 1;
   const main = $('#vista');
-  main.innerHTML = ''; main.classList.remove('ancha');
+  // Mientras carga se muestra un aviso, para que nunca quede la pantalla en blanco.
+  main.innerHTML = '<p class="vacio">Cargando…</p>'; main.classList.remove('ancha');
   await VISTAS[vista](main, params);
   window.scrollTo(0, 0);
 }
@@ -1497,4 +1518,5 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 history.replaceState({ n: 1 }, '');
 pila.push({ vista: 'inicio', params: {} });
 pintar();
-actualizarMarcas().catch(() => {});
+// Se espera un poco para no frenar la primera pantalla al abrir la app.
+setTimeout(() => actualizarMarcas().catch(() => {}), 5000);
