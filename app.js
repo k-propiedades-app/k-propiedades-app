@@ -612,6 +612,7 @@ VISTAS.propiedad = async (main, { id }) => {
     <div class="seccion">
       <h2>Fotos (${fotos.length}) <span class="acciones"><button class="btn sec chico" id="camara">📷</button><button class="btn chico" id="addFoto">+ Galería</button></span></h2>
       <label class="check" style="margin-top:0"><input type="checkbox" id="verMarca" checked> Ver con marca de agua</label>
+      ${fotos.length > 1 ? '<button class="btn sec chico" id="todasSel" style="margin-top:6px">☑️ Seleccionar todas</button>' : ''}
       <div class="galeria" id="galFotos" style="margin-top:8px">${fotos.length ? '' : '<p class="sub">Sin fotos.</p>'}</div>
       <div class="acciones" id="barraSel" hidden style="margin-top:10px">
         <button class="btn peligro" id="borrarSel">🗑️ Eliminar seleccionadas</button><button class="btn sec" id="limpiarSel">Quitar selección</button></div>
@@ -697,6 +698,7 @@ VISTAS.propiedad = async (main, { id }) => {
     pintar();
   };
   $('#limpiarSel').onclick = () => { seleccion.clear(); pintarFotos(); verBarra(); };
+  if ($('#todasSel')) $('#todasSel').onclick = () => { fotos.forEach(f => seleccion.add(f.id)); pintarFotos(); verBarra(); };
   $('#verMarca').onchange = pintarFotos; pintarFotos();
 
   const agregarFotos = async capture => {
