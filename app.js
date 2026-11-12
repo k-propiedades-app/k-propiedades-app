@@ -117,7 +117,7 @@ const borrar = (s, id) => tx(s, 'readwrite', o => o.delete(id));
 const mediaDe = propId => tx('media', 'readonly', o => o.index('propId').getAll(propId));
 const nuevoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-const AJUSTES_BASE = { corredora: 'K Propiedades', telefono: '+56 9 3499 7313', email: 'kliberona.b@gmail.com', hashtags: '#KPropiedades #propiedades #Chile', marcaAuto: true };
+const AJUSTES_BASE = { corredora: 'K Propiedades', telefono: '+56 9 3499 7313', email: 'kpropiedad@gmail.com', hashtags: '#KPropiedades #propiedades #Chile', marcaAuto: true };
 // Repositorio donde vive la vitrina pública (GitHub Pages).
 const REPO = 'k-propiedades-app/k-propiedades-app';
 const URL_VITRINA = 'https://k-propiedades-app.github.io/k-propiedades-app/vitrina/';
@@ -128,7 +128,10 @@ async function corredores() {
 }
 async function ajustes() {
   const r = await uno('ajustes', 'general');
-  return Object.assign({}, AJUSTES_BASE, r ? r.v : {});
+  const v = Object.assign({}, AJUSTES_BASE, r ? r.v : {});
+  // El correo de la corredora pasó a ser kpropiedad@gmail.com (antes se usaba el personal de Karen).
+  if (v.email === 'kliberona.b@gmail.com') v.email = AJUSTES_BASE.email;
+  return v;
 }
 
 // ---------- Utilidades ----------

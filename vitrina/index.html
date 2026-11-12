@@ -321,7 +321,7 @@
 
   fetch('datos/propiedades.json', { cache: 'no-cache' })
     .then(r => r.ok ? r.json() : Promise.reject())
-    .catch(() => ({ propiedades: [], contacto: { telefono: '+56 9 3499 7313', email: 'kliberona.b@gmail.com' } }))
+    .catch(() => ({ propiedades: [], contacto: { telefono: '+56 9 3499 7313', email: 'kpropiedad@gmail.com' } }))
     .then(d => {
       datos = d; datos.propiedades = datos.propiedades || []; datos.contacto = datos.contacto || {};
       const comunas = [...new Set(datos.propiedades.map(p => p.comuna).filter(Boolean))].sort();
