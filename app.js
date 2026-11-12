@@ -171,18 +171,37 @@ async function valorUF() {
   } catch (e) { /* sin internet o servicio caído */ }
   return g && g.v ? (ufCache = g.v) : null;
 }
+// Una propiedad puede ser para arriendo, venta o ambas ("Arriendo y venta").
+// En ambas, precio/moneda es el de venta y precioArriendo/monedaArriendo el de arriendo.
+const AMBAS = 'Arriendo y venta';
+const esAmbas = p => p.operacion === AMBAS;
+const tieneOp = (p, op) => p.operacion === op || (esAmbas(p) && (op === 'Arriendo' || op === 'Venta'));
+function preciosDe(p) {
+  if (!esAmbas(p)) return [{ op: p.operacion, precio: p.precio, moneda: p.moneda }];
+  return [{ op: 'Venta', precio: p.precio, moneda: p.moneda }, { op: 'Arriendo', precio: p.precioArriendo, moneda: p.monedaArriendo || 'CLP' }];
+}
 // Precio en la moneda original y su equivalente en la otra.
-function preciosDobles(p, uf) {
-  const v = num(p.precio);
+function precioUno(x, uf) {
+  const v = num(x.precio);
   if (!v) return { principal: 'Precio a consultar', otro: '' };
-  const mes = p.operacion === 'Arriendo' && p.moneda !== 'UF' ? '/mes' : '';
-  if (p.moneda === 'UF') return { principal: `UF ${v.toLocaleString('es-CL')}`, otro: uf ? `$${Math.round(v * uf).toLocaleString('es-CL')}` : '' };
+  const mes = x.op === 'Arriendo' && x.moneda !== 'UF' ? '/mes' : '';
+  if (x.moneda === 'UF') return { principal: `UF ${v.toLocaleString('es-CL')}`, otro: uf ? `$${Math.round(v * uf).toLocaleString('es-CL')}` : '' };
   return { principal: `$${v.toLocaleString('es-CL')}${mes}`, otro: uf ? `UF ${(v / uf).toLocaleString('es-CL', { maximumFractionDigits: v / uf < 100 ? 1 : 0 })}${mes}` : '' };
 }
+function preciosDobles(p, uf) {
+  if (!esAmbas(p)) return precioUno(preciosDe(p)[0], uf);
+  const [v, a] = preciosDe(p).map(x => ({ ...x, r: precioUno(x, uf) }));
+  return { principal: `Venta ${v.r.principal} · Arriendo ${a.r.principal}`, otro: [v.r.otro && 'Venta ' + v.r.otro, a.r.otro && 'Arriendo ' + a.r.otro].filter(Boolean).join(' · ') };
+}
+function precioSolo(x) {
+  if (!num(x.precio)) return '';
+  const n = num(x.precio).toLocaleString('es-CL');
+  return x.moneda === 'UF' ? `UF ${n}` : `$${n}`;
+}
+// Texto corto del precio. Con "Arriendo y venta" muestra los dos.
 function precioTxt(p) {
-  if (!num(p.precio)) return '';
-  const n = num(p.precio).toLocaleString('es-CL');
-  return p.moneda === 'UF' ? `UF ${n}` : `$${n}`;
+  if (!esAmbas(p)) return precioSolo(p);
+  return preciosDe(p).filter(x => num(x.precio)).map(x => `${x.op} ${precioSolo(x)}${x.op === 'Arriendo' && x.moneda !== 'UF' ? '/mes' : ''}`).join(' · ');
 }
 function telWhatsapp(t) {
   let d = String(t || '').replace(/\D/g, '');
@@ -380,7 +399,7 @@ VISTAS.propiedades = async (main) => {
     $('#csv').hidden = modo !== 'tabla';
     $('#vista').classList.toggle('ancha', modo === 'tabla');
     const q = $('#buscar').value.toLowerCase(), f = $('#filtro').value, ft = $('#fTipo').value, fo = $('#fOp').value;
-    const vis = props.filter(p => (!ft || p.tipo === ft) && (!fo || p.operacion === fo) && (!f || (f === 'pv' ? postventaDe(p).pendiente : estadoDe(p) === f)) &&
+    const vis = props.filter(p => (!ft || p.tipo === ft) && (!fo || tieneOp(p, fo)) && (!f || (f === 'pv' ? postventaDe(p).pendiente : estadoDe(p) === f)) &&
       [p.titulo, p.direccion, p.comuna, p.rol, p.tipo, p.codigo, codigoTxt(p)].join(' ').toLowerCase().includes(q));
     visibles = vis;
     $('#lista').innerHTML = vis.length ? '' : `<p class="vacio">${props.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay propiedades.<br>Toca + para agregar la primera.'}</p>`;
@@ -396,7 +415,8 @@ VISTAS.propiedades = async (main) => {
           <div class="fp-chips"><span class="chip codigo">${codigoTxt(p)}</span>${chipEstado(p)}</div>
           <h3>${esc(p.titulo || p.tipo)}</h3>
           <div class="sub">📍 ${esc([p.ubicacionPublica || p.direccion, p.comuna].filter(Boolean).join(' · ') || 'Sin ubicación')}</div>
-          <div class="fp-precio"><b>${pr.principal}</b>${pr.otro ? `<span>${pr.otro}</span>` : ''}</div>
+          ${esAmbas(p) ? preciosDe(p).map(x => { const r = precioUno(x, uf); return `<div class="fp-precio"><small>${x.op}</small> <b>${r.principal}</b>${r.otro ? `<span>${r.otro}</span>` : ''}</div>`; }).join('')
+            : `<div class="fp-precio"><b>${pr.principal}</b>${pr.otro ? `<span>${pr.otro}</span>` : ''}</div>`}
           ${specs.length ? `<div class="fp-specs">${specs.map(x => `<div><b>${esc(x[0])}</b><small>${x[1]}</small></div>`).join('')}</div>` : ''}
           ${p.corredor ? `<div class="fp-corredor">👤 ${esc(p.corredor)} <small>Corredor a cargo</small></div>` : ''}
         </div>`;
@@ -431,7 +451,7 @@ VISTAS.editarProp = async (main, { id }) => {
   main.innerHTML = `<form id="f">
     ${campo('titulo', 'Nombre corto (ej. Depto 2D2B Ñuñoa)')}
     <div class="fila"><div><label>Tipo</label><select name="tipo">${opt(TIPOS.includes(p.tipo) ? TIPOS : [...TIPOS, p.tipo], p.tipo)}</select></div>
-      <div><label>Operación</label><select name="operacion">${opt(['Arriendo', 'Venta'], p.operacion)}</select></div></div>
+      <div><label>Operación</label><select name="operacion">${opt(['Arriendo', 'Venta', AMBAS], p.operacion)}</select></div></div>
     <label>Corredor a cargo (se muestra en la vitrina)</label>${await (async () => {
       const nombres = (await corredores()).map(c => c.nombre);
       if (p.corredor && !nombres.includes(p.corredor)) nombres.push(p.corredor);
@@ -445,8 +465,10 @@ VISTAS.editarProp = async (main, { id }) => {
     <label>Región</label><select name="region" id="selRegion"><option value="">— Elegir región —</option>${
       REGIONES.map(([r]) => `<option value="${esc(r)}" ${r === (p.region || regionDe(p.comuna)) ? 'selected' : ''}>${esc(REGION_NOMBRE[r])}</option>`).join('')}</select>
     <div class="fila"><div><label>Comuna</label><select name="comuna" id="selComuna"></select></div><div>${campo('rol', 'Rol SII')}</div></div>
-    <div class="fila"><div>${campo('precio', 'Precio', 'text', 'inputmode="decimal" placeholder="ej. 105.000.000"')}</div>
+    <div class="fila"><div>${campo('precio', '<span id="lblPrecio">Precio</span>', 'text', 'inputmode="decimal" placeholder="ej. 105.000.000"')}</div>
       <div><label>Moneda</label><select name="moneda">${opt(['CLP', 'UF'], p.moneda)}</select></div></div>
+    <div class="fila" id="filaArriendo" hidden><div>${campo('precioArriendo', 'Precio de arriendo (mensual)', 'text', 'inputmode="decimal" placeholder="ej. 450.000"')}</div>
+      <div><label>Moneda</label><select name="monedaArriendo">${opt(['CLP', 'UF'], p.monedaArriendo || 'CLP')}</select></div></div>
     <div id="filaHa" hidden><label>Hectáreas (ej. 0,5 · 1 · 2,75)</label><input name="hectareas" id="inHa" type="text" inputmode="decimal" value="${esc(p.hectareas)}" placeholder="0,5">
       <p class="sub" style="margin:4px 0 0">Los m² totales se calculan solos (1 ha = 10.000 m²).</p></div>
     <div class="fila"><div>${campo('m2util', 'm² útiles / construidos', 'number', 'step="any"')}</div><div>${campo('m2total', 'm² totales / terreno', 'number', 'step="any"')}</div></div>
@@ -472,6 +494,11 @@ VISTAS.editarProp = async (main, { id }) => {
   // Campo, parcela y sitio: hectáreas que se convierten a m² totales.
   const verHa = () => { $('#filaHa').hidden = !CON_HECTAREAS.includes($('#f [name=tipo]').value); };
   $('#f [name=tipo]').addEventListener('change', verHa); verHa();
+  // Arriendo y venta: se piden los dos precios.
+  const verOp = () => { const op = $('#f [name=operacion]').value;
+    $('#filaArriendo').hidden = op !== AMBAS;
+    $('#lblPrecio').textContent = op === 'Arriendo' ? 'Precio de arriendo (mensual)' : 'Precio de venta'; };
+  $('#f [name=operacion]').addEventListener('change', verOp); verOp();
   $('#inHa').oninput = () => { const ha = hectareasNum($('#inHa').value); if (ha) $('#f [name=m2total]').value = Math.round(ha * 10000); };
   $('#f').onsubmit = async e => {
     e.preventDefault();
@@ -718,7 +745,7 @@ function textoAviso(p, cfg) {
   if (num(p.gastosComunes)) l.push(`🧾 Gastos comunes aprox. ${plata(p.gastosComunes)}`);
   if (p.descripcion) l.push('', p.descripcion);
   l.push('', `📲 ${cfg.corredora}${cfg.telefono ? ' · ' + cfg.telefono : ''}${cfg.email ? ' · ' + cfg.email : ''}`);
-  const tags = [cfg.hashtags, p.comuna && '#' + p.comuna.replace(/\s+/g, ''), '#' + (p.operacion === 'Venta' ? 'venta' : 'arriendo')].filter(Boolean).join(' ');
+  const tags = [cfg.hashtags, p.comuna && '#' + p.comuna.replace(/\s+/g, ''), (esAmbas(p) ? '#venta #arriendo' : '#' + (p.operacion === 'Venta' ? 'venta' : 'arriendo'))].filter(Boolean).join(' ');
   l.push('', tags);
   return l.join('\n');
 }
@@ -1295,7 +1322,8 @@ async function publicarVitrina(boton) {
       }
       publicas.push({
         id: p.id, codigo: p.codigo || '', titulo: p.titulo, tipo: p.tipo, operacion: p.operacion, estado: estadoDe(p), comuna: comunaOficial(p.comuna || ''), region: p.region || regionDe(p.comuna),
-        ubicacion: p.ubicacionPublica || '', precio: num(p.precio) || '', moneda: p.moneda, m2util: p.m2util || '', m2total: p.m2total || '', hectareas: hectareasTxt(p),
+        ubicacion: p.ubicacionPublica || '', precio: num(p.precio) || '', moneda: p.moneda,
+        ...(esAmbas(p) ? { precioArriendo: num(p.precioArriendo) || '', monedaArriendo: p.monedaArriendo || 'CLP' } : {}), m2util: p.m2util || '', m2total: p.m2total || '', hectareas: hectareasTxt(p),
         dorm: p.dorm || '', banos: p.banos || '', estac: p.estac || '', bodega: p.bodega || '', gastosComunes: num(p.gastosComunes) || '',
         descripcion: p.descripcion || '', fotos: rutas,
         corredor: (c => c ? { nombre: c.nombre, telefono: c.telefono || '', email: c.email || '' } : null)(corrs.find(c => c.nombre === p.corredor))
