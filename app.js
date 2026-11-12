@@ -236,7 +236,7 @@ function descargar(blob, nombre) {
 // ---------- Fotos: tamaño y marca de agua ----------
 let logoImg = null;
 function cargarLogo() {
-  if (!logoImg) logoImg = new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = 'logo.png'; });
+  if (!logoImg) logoImg = new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = 'marca_agua.png'; });
   return logoImg;
 }
 async function imagen(blob) {
@@ -245,10 +245,10 @@ async function imagen(blob) {
   }
   return new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = URL.createObjectURL(blob); });
 }
-// Achica la foto (lado mayor 1600 px) y opcionalmente pone el logo abajo a la derecha con halo blanco.
+// Achica la foto (lado mayor 1600 px) y opcionalmente pone el logo al centro, en blanco semitransparente.
 // Versión del logo de la marca de agua. Al cambiar el logo se sube este número
 // y las fotos guardadas se vuelven a marcar solas con el logo nuevo.
-const MARCA_V = 2;
+const MARCA_V = 3;
 // todas = true vuelve a marcar todas las fotos (botón en Ajustes), aunque ya estén al día.
 async function actualizarMarcas(todas = false) {
   const viejas = (await todos('media')).filter(m => m.kind === 'foto' && m.blob && (todas || (m.blobMarca && (m.marcaV || 1) < MARCA_V)));
@@ -270,13 +270,17 @@ async function procesarFoto(blob, conMarca) {
   g.drawImage(img, 0, 0, w, h);
   if (conMarca) {
     const logo = await cargarLogo();
-    const lw = Math.round(w * 0.3), lh = Math.round(logo.height * lw / logo.width);
-    const m = Math.round(w * 0.03), x = w - lw - m, y = h - lh - m;
+    // Logo blanco al 45% del ancho, centrado, 55% visible y con sombra muy suave para fondos claros.
+    const lw = Math.round(w * 0.45), lh = Math.round(logo.height * lw / logo.width);
+    const x = Math.round((w - lw) / 2), y = Math.round((h - lh) / 2);
     g.save();
-    g.shadowColor = 'rgba(255,255,255,0.95)'; g.shadowBlur = Math.max(8, lw * 0.06);
-    for (let k = 0; k < 3; k++) g.drawImage(logo, x, y, lw, lh);
+    g.globalAlpha = 0.18; g.filter = `blur(${Math.max(2, lw / 300)}px) brightness(0)`;
+    g.drawImage(logo, x + 2, y + 2, lw, lh);
     g.restore();
+    g.save();
+    g.globalAlpha = 0.55;
     g.drawImage(logo, x, y, lw, lh);
+    g.restore();
   }
   return new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.88));
 }
