@@ -64,16 +64,23 @@ function hectareasNum(v) { return parseFloat(String(v || '').replace(/\s|ha/gi, 
 function hectareasTxt(p) { const h = CON_HECTAREAS.includes(p.tipo) && hectareasNum(p.hectareas); return h ? h.toLocaleString('es-CL') + ' ha' : ''; }
 // Busca la región de una comuna (sin importar mayúsculas ni tildes).
 var sinTilde = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const _regionCache = new Map();
 function regionDe(comuna) {
+  if (_regionCache.has(comuna)) return _regionCache.get(comuna);
   const c = sinTilde(comuna);
   const r = REGIONES.find(([, cs]) => cs.some(x => sinTilde(x) === c));
+  _regionCache.set(comuna, r ? r[0] : '');
   return r ? r[0] : '';
 }
 // Devuelve el nombre oficial de una comuna escrita a mano (ej. "nunoa" → "Ñuñoa").
+const _comunaCache = new Map();
 function comunaOficial(comuna) {
+  if (_comunaCache.has(comuna)) return _comunaCache.get(comuna);
   const c = sinTilde(comuna);
-  for (const [, cs] of REGIONES) { const x = cs.find(y => sinTilde(y) === c); if (x) return x; }
-  return comuna;
+  let r = comuna;
+  for (const [, cs] of REGIONES) { const x = cs.find(y => sinTilde(y) === c); if (x) { r = x; break; } }
+  _comunaCache.set(comuna, r);
+  return r;
 }
 
 /* K Propiedades: app para guardar propiedades, personas, fotos, videos y documentos.
@@ -366,7 +373,9 @@ VISTAS.propiedades = async (main) => {
   titulo('Propiedades');
   const props = (await todos('props')).sort((a, b) => b.creado - a.creado);
   await asegurarCodigos(props);
-  const fotos = (await todos('media')).filter(m => m.kind === 'foto');
+  const fotosPor = new Map();
+  for (const m of await todos('media')) if (m.kind === 'foto') { if (!fotosPor.has(m.propId)) fotosPor.set(m.propId, []); fotosPor.get(m.propId).push(m); }
+  const fotosDe = p => fotosPor.get(p.id) || [];
   const uf = await valorUF();
   main.innerHTML = `
     <button class="btn sec ancho" id="irNews" style="margin:0 0 12px">📰 Newsletter para LinkedIn</button>
@@ -384,7 +393,12 @@ VISTAS.propiedades = async (main) => {
       <button data-modo="tabla">▦ Tabla</button><button data-modo="tarjetas">▤ Tarjetas</button></div>
       <button class="btn sec" id="csv">⬇ Excel</button></div>
     <div class="lista" id="lista"></div>`;
-  let modo = 'tabla', orden = { k: 'codigo', asc: false };
+  const busq = new Map();
+  const textoBusqueda = p => {
+    if (!busq.has(p.id)) busq.set(p.id, [p.titulo, p.direccion, p.comuna, p.rol, p.tipo, p.codigo, codigoTxt(p)].join(' ').toLowerCase());
+    return busq.get(p.id);
+  };
+  let modo = 'tabla', orden = { k: 'Cód.', asc: false };
   try { modo = localStorage.getItem('vistaProps') || 'tabla'; } catch (e) {}
   // Columnas de la tabla: [título, valor para mostrar, valor para ordenar]
   const COLS = [
@@ -395,35 +409,53 @@ VISTAS.propiedades = async (main) => {
     ['m² útiles', p => p.m2util, p => num(p.m2util)], ['m² totales', p => p.m2total, p => num(p.m2total)], ['Hectáreas', p => hectareasTxt(p), p => hectareasNum(p.hectareas)],
     ['Dorm.', p => p.dorm, p => num(p.dorm)], ['Baños', p => p.banos, p => num(p.banos)], ['Estac.', p => p.estac, p => num(p.estac)],
     ['Gastos com.', p => num(p.gastosComunes) ? plata(p.gastosComunes) : '', p => num(p.gastosComunes)], ['Rol', p => p.rol],
-    ['Corredor', p => p.corredor], ['Vitrina', p => enVitrina(p) ? '🌐 Sí' : ''], ['Fotos', p => fotos.filter(m => m.propId === p.id).length || '', p => fotos.filter(m => m.propId === p.id).length],
+    ['Corredor', p => p.corredor], ['Vitrina', p => enVitrina(p) ? '🌐 Sí' : ''], ['Fotos', p => fotosDe(p).length || '', p => fotosDe(p).length],
     ['Creada', p => p.creado ? new Date(p.creado).toLocaleDateString('es-CL') : '', p => p.creado || 0]
   ];
   let visibles = [];
+  // Con muchas propiedades se dibujan de a POR_PAGINA para que la pestaña abra rápido.
+  const POR_PAGINA = 100;
+  let mostrar = POR_PAGINA;
+  const masBoton = total => total > mostrar
+    ? `<div class="acciones" style="margin:10px 0"><button class="btn sec" id="verMas">Mostrar ${Math.min(POR_PAGINA * 2, total - mostrar)} más</button>
+        <button class="btn sec" id="verTodas">Mostrar todas (${total})</button></div>` : '';
+  const activarMas = () => {
+    if ($('#verMas')) $('#verMas').onclick = () => { mostrar += POR_PAGINA * 2; listar(true); };
+    if ($('#verTodas')) $('#verTodas').onclick = () => { mostrar = Infinity; listar(true); };
+  };
   const tabla = vis => {
     const c = COLS.find(x => x[0] === orden.k) || COLS[0], val = c[2] || c[1];
-    vis = [...vis].sort((a, b) => { const x = val(a), y = val(b);
+    const conValor = vis.map(p => [val(p), p]);
+    conValor.sort(([x], [y]) => {
       const r = typeof x === 'number' && typeof y === 'number' ? x - y : String(x ?? '').localeCompare(String(y ?? ''), 'es', { numeric: true });
       return orden.asc ? r : -r; });
+    vis = conValor.map(x => x[1]);
+    visibles = vis;
+    const parte = vis.slice(0, mostrar);
     $('#lista').innerHTML = `<div class="tabla-envoltura"><table class="tabla-datos"><thead><tr>${COLS.map(([t]) =>
       `<th data-k="${t}">${t}${t === orden.k ? (orden.asc ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>
-      <tbody>${vis.map(p => `<tr data-id="${p.id}">${COLS.map(([t, f]) => `<td>${esc(f(p) ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
-      <p class="sub">${vis.length} propiedad(es). Toca un título para ordenar y una fila para abrir la ficha.</p>`;
+      <tbody>${parte.map(p => `<tr data-id="${p.id}">${COLS.map(([t, f]) => `<td>${esc(f(p) ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      ${masBoton(vis.length)}
+      <p class="sub">${vis.length > parte.length ? `Viendo ${parte.length} de ${vis.length}` : vis.length} propiedad(es). Toca un título para ordenar y una fila para abrir la ficha.</p>`;
     $('#lista').querySelectorAll('th').forEach(th => th.onclick = () => {
       orden = { k: th.dataset.k, asc: orden.k === th.dataset.k ? !orden.asc : true }; listar(); });
-    $('#lista').querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => ir('propiedad', { id: tr.dataset.id }));
+    $('#lista tbody').onclick = e => { const tr = e.target.closest('tr'); if (tr) ir('propiedad', { id: tr.dataset.id }); };
+    activarMas();
   };
-  const listar = () => {
+  const listar = (seguir = false) => {
+    if (!seguir) mostrar = POR_PAGINA;
     document.querySelectorAll('[data-modo]').forEach(b => b.classList.toggle('activo', b.dataset.modo === modo));
     $('#csv').hidden = modo !== 'tabla';
     $('#vista').classList.toggle('ancha', modo === 'tabla');
     const q = $('#buscar').value.toLowerCase(), f = $('#filtro').value, ft = $('#fTipo').value, fo = $('#fOp').value;
     const vis = props.filter(p => (!ft || p.tipo === ft) && (!fo || tieneOp(p, fo)) && (!f || (f === 'pv' ? postventaDe(p).pendiente : estadoDe(p) === f)) &&
-      [p.titulo, p.direccion, p.comuna, p.rol, p.tipo, p.codigo, codigoTxt(p)].join(' ').toLowerCase().includes(q));
+      (!q || textoBusqueda(p).includes(q)));
     visibles = vis;
     $('#lista').innerHTML = vis.length ? '' : `<p class="vacio">${props.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay propiedades.<br>Toca + para agregar la primera.'}</p>`;
     if (vis.length && modo === 'tabla') return tabla(vis);
-    vis.forEach(p => {
-      const foto = portadaDe(p, fotos.filter(m => m.propId === p.id));
+    const frag = document.createDocumentFragment();
+    vis.slice(0, mostrar).forEach(p => {
+      const foto = portadaDe(p, fotosDe(p));
       const b = document.createElement('button'); b.className = 'ficha-prop';
       const pr = preciosDobles(p, uf);
       const specs = [[p.dorm, 'dorm.'], [p.banos, 'baños'], [p.m2util, 'm² útiles'], [p.m2total, 'm² totales']].filter(x => num(x[0]));
@@ -439,10 +471,14 @@ VISTAS.propiedades = async (main) => {
           ${p.corredor ? `<div class="fp-corredor">👤 ${esc(p.corredor)} <small>Corredor a cargo</small></div>` : ''}
         </div>`;
       b.onclick = () => ir('propiedad', { id: p.id });
-      $('#lista').appendChild(b);
+      frag.appendChild(b);
     });
+    $('#lista').appendChild(frag);
+    if (vis.length > mostrar) { $('#lista').insertAdjacentHTML('beforeend', masBoton(vis.length)); activarMas(); }
   };
-  $('#buscar').oninput = listar; $('#filtro').onchange = listar; $('#fTipo').onchange = listar; $('#fOp').onchange = listar;
+  let pausa;
+  $('#buscar').oninput = () => { clearTimeout(pausa); pausa = setTimeout(listar, 200); };
+  $('#filtro').onchange = () => listar(); $('#fTipo').onchange = () => listar(); $('#fOp').onchange = () => listar();
   document.querySelectorAll('[data-modo]').forEach(b => b.onclick = () => {
     modo = b.dataset.modo; try { localStorage.setItem('vistaProps', modo); } catch (e) {} listar(); });
   // Descarga lo que se ve en la tabla como archivo para Excel.
@@ -1113,24 +1149,37 @@ const ROLES = ['Propietario', 'Arrendatario', 'Comprador', 'Interesado', 'Otro']
 VISTAS.personas = async (main) => {
   titulo('Personas');
   const personas = (await todos('personas')).sort((a, b) => a.nombre.localeCompare(b.nombre));
-  const props = await todos('props');
+  const propPorId = new Map((await todos('props')).map(p => [p.id, p]));
   main.innerHTML = `<div class="barra"><input id="buscar" type="search" placeholder="Buscar por nombre, RUT, teléfono…">
     <select id="filtro" style="max-width:40%"><option value="">Todos</option>${ROLES.map(r => `<option>${r}</option>`).join('')}</select></div>
     <div class="lista" id="lista"></div>`;
-  const listar = () => {
+  // Se dibujan de a 100 para que la pestaña abra rápido con muchas personas.
+  let mostrar = 100;
+  const listar = (seguir = false) => {
+    if (!seguir) mostrar = 100;
     const q = $('#buscar').value.toLowerCase(), f = $('#filtro').value;
-    const vis = personas.filter(x => (!f || x.rol === f) && [x.nombre, x.rut, x.telefono, x.email].join(' ').toLowerCase().includes(q));
+    const vis = personas.filter(x => (!f || x.rol === f) && (!q || [x.nombre, x.rut, x.telefono, x.email].join(' ').toLowerCase().includes(q)));
     $('#lista').innerHTML = vis.length ? '' : `<p class="vacio">${personas.length ? 'Nada coincide.' : 'Aún no hay personas.<br>Toca + para agregar propietarios y clientes.'}</p>`;
-    vis.forEach(x => {
-      const pr = props.find(p => p.id === x.propId);
+    const frag = document.createDocumentFragment();
+    vis.slice(0, mostrar).forEach(x => {
+      const pr = propPorId.get(x.propId);
       const b = document.createElement('button'); b.className = 'tarjeta';
       b.innerHTML = `<div class="sinfoto">${x.rol === 'Propietario' ? '🔑' : '🙂'}</div><div class="info"><h3>${esc(x.nombre)}</h3>
         <div class="sub">${esc(x.telefono || x.email || '')}</div><span class="chip oro">${esc(x.rol)}</span>${pr ? `<span class="chip">${esc(pr.titulo)}</span>` : ''}</div>`;
       b.onclick = () => ir('persona', { id: x.id });
-      $('#lista').appendChild(b);
+      frag.appendChild(b);
     });
+    $('#lista').appendChild(frag);
+    if (vis.length > mostrar) {
+      $('#lista').insertAdjacentHTML('beforeend', `<p class="sub">Viendo ${mostrar} de ${vis.length} personas.</p>
+        <div class="acciones" style="margin:10px 0"><button class="btn sec" id="verMas">Mostrar 200 más</button><button class="btn sec" id="verTodas">Mostrar todas (${vis.length})</button></div>`);
+      $('#verMas').onclick = () => { mostrar += 200; listar(true); };
+      $('#verTodas').onclick = () => { mostrar = Infinity; listar(true); };
+    }
   };
-  $('#buscar').oninput = listar; $('#filtro').onchange = listar; listar();
+  let pausa;
+  $('#buscar').oninput = () => { clearTimeout(pausa); pausa = setTimeout(listar, 200); };
+  $('#filtro').onchange = () => listar(); listar();
   fab(() => ir('editarPersona', {}));
 };
 
