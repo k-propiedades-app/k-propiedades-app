@@ -245,7 +245,7 @@ async function procesarFoto(blob, conMarca) {
   g.drawImage(img, 0, 0, w, h);
   if (conMarca) {
     const logo = await cargarLogo();
-    const lw = Math.round(w * 0.24), lh = Math.round(logo.height * lw / logo.width);
+    const lw = Math.round(w * 0.3), lh = Math.round(logo.height * lw / logo.width);
     const m = Math.round(w * 0.03), x = w - lw - m, y = h - lh - m;
     g.save();
     g.shadowColor = 'rgba(255,255,255,0.95)'; g.shadowBlur = Math.max(8, lw * 0.06);
