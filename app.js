@@ -612,7 +612,10 @@ VISTAS.propiedad = async (main, { id }) => {
     <div class="seccion">
       <h2>Fotos (${fotos.length}) <span class="acciones"><button class="btn sec chico" id="camara">📷</button><button class="btn chico" id="addFoto">+ Galería</button></span></h2>
       <label class="check" style="margin-top:0"><input type="checkbox" id="verMarca" checked> Ver con marca de agua</label>
+      ${fotos.length > 1 ? '<button class="btn sec chico" id="todasSel" style="margin-top:6px">☑️ Seleccionar todas</button>' : ''}
       <div class="galeria" id="galFotos" style="margin-top:8px">${fotos.length ? '' : '<p class="sub">Sin fotos.</p>'}</div>
+      <div class="acciones" id="barraSel" hidden style="margin-top:10px">
+        <button class="btn peligro" id="borrarSel">🗑️ Eliminar seleccionadas</button><button class="btn sec" id="limpiarSel">Quitar selección</button></div>
     </div>
 
     <div class="seccion">
@@ -677,11 +680,25 @@ VISTAS.propiedad = async (main, { id }) => {
       d.innerHTML = `<img src="${url(conMarca ? f.blobMarca || f.blob : f.blob)}" alt="" loading="lazy">
         ${conMarca && f.blobMarca ? '<span class="marca">con marca</span>' : ''}${portadaDe(p, fotos) === f ? '<span class="portada">★ Portada</span>' : ''}
         <input type="checkbox" class="sel" ${seleccion.has(f.id) ? 'checked' : ''} aria-label="Seleccionar">`;
-      d.querySelector('.sel').onchange = e => { e.target.checked ? seleccion.add(f.id) : seleccion.delete(f.id); };
+      d.querySelector('.sel').onchange = e => { e.target.checked ? seleccion.add(f.id) : seleccion.delete(f.id); verBarra(); };
       d.querySelector('img').onclick = () => visor(f, 'foto');
       g.appendChild(d);
     });
   };
+  // Al marcar fotos aparece el botón para borrarlas todas de una vez.
+  const verBarra = () => {
+    $('#barraSel').hidden = !seleccion.size;
+    $('#borrarSel').textContent = `🗑️ Eliminar seleccionadas (${seleccion.size})`;
+  };
+  $('#borrarSel').onclick = async () => {
+    if (!confirm(`¿Eliminar ${seleccion.size} foto(s) de esta propiedad?`)) return;
+    for (const fid of seleccion) await borrar('media', fid);
+    aviso(`${seleccion.size} foto(s) eliminadas`);
+    seleccion.clear();
+    pintar();
+  };
+  $('#limpiarSel').onclick = () => { seleccion.clear(); pintarFotos(); verBarra(); };
+  if ($('#todasSel')) $('#todasSel').onclick = () => { fotos.forEach(f => seleccion.add(f.id)); pintarFotos(); verBarra(); };
   $('#verMarca').onchange = pintarFotos; pintarFotos();
 
   const agregarFotos = async capture => {
