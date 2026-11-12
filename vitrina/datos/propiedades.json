@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-04T03:13:01.103Z",
+ "actualizado": "2026-11-12T12:16:12.076Z",
  "contacto": {
   "nombre": "K Propiedades",
   "telefono": "+56 9 3499 7313",
@@ -10,67 +10,45 @@
    "nombre": "Karen Liberona",
    "telefono": "+56 9 3499 7313",
    "email": "kliberona.b@gmail.com"
-  },
-  {
-   "nombre": "Álvaro Silva",
-   "telefono": "+56966931397",
-   "email": "silva.garcia.a@gmail.com"
   }
  ],
  "propiedades": [
   {
-   "id": "mw1iukwdxeq8z",
-   "codigo": 2,
-   "titulo": "Prueba Parcela",
-   "tipo": "Parcela",
-   "operacion": "Venta",
-   "estado": "Disponible",
-   "comuna": "Pucón",
-   "region": "La Araucanía",
-   "ubicacion": "A pasos del hotel park lake",
-   "precio": 400000000,
-   "moneda": "CLP",
-   "m2util": "",
-   "m2total": "8000",
-   "hectareas": "0,8 ha",
-   "dorm": "",
-   "banos": "",
-   "estac": "",
-   "bodega": "",
-   "gastosComunes": "",
-   "descripcion": "Hermosa pacela de casi 1ha en camino Villarrica-Pucón, con agua, luz... legar y construir.",
-   "fotos": [
-    "datos/fotos/mw1jflr0z0fxd.jpg"
-   ],
-   "corredor": {
-    "nombre": "Álvaro Silva",
-    "telefono": "+56966931397",
-    "email": "silva.garcia.a@gmail.com"
-   }
-  },
-  {
-   "id": "mw1csm1zths3l",
+   "id": "mwdhhjt4lh5ef",
    "codigo": 1,
-   "titulo": "Depto Edificio Mistral",
-   "tipo": "Departamento",
-   "operacion": "Venta",
+   "titulo": "Casa Lomas del Carmen",
+   "tipo": "Casa",
+   "operacion": "Arriendo y venta",
    "estado": "Disponible",
    "comuna": "Temuco",
    "region": "La Araucanía",
-   "ubicacion": "A pasos del mall portal Temuco",
-   "precio": 105000000,
-   "moneda": "CLP",
-   "m2util": "",
-   "m2total": "50",
+   "ubicacion": "Ubicación exclusiva en Condominio Lomas del Carmen",
+   "precio": 15000,
+   "moneda": "UF",
+   "precioArriendo": 1800000,
+   "monedaArriendo": "CLP",
+   "m2util": "250",
+   "m2total": "1.100",
    "hectareas": "",
-   "dorm": "3",
+   "dorm": "4",
    "banos": "2",
-   "estac": "1",
-   "bodega": "0",
-   "gastosComunes": 110000,
-   "descripcion": "Se vende depto Avenida Gabriela Mistral",
+   "estac": "",
+   "bodega": "",
+   "gastosComunes": "",
+   "descripcion": "1° piso \nDormitorio principal con baño\nescritorio/ pieza \nBaño vista \nCocina \nLogia \nPieza de servicio con baño \nHall de entrada \nLiving \nComedor \nQuincho \nPiscina \nTina caliente a calefacción central \n\n2° piso \n2 baños \n4 piezas \nSala de estar central \n\nCalefacción a petróleo 300 mil aprox/ mes en invierno \n2 estufas a pelet de respaldo \nCondominio cerrado \nPortón eléctrico interior\n",
    "fotos": [
-    "datos/fotos/mw1d6z0i0p39u.jpg"
+    "datos/fotos/mwdi0fm8ryqum.jpg",
+    "datos/fotos/mwdi0ibjmtn5p.jpg",
+    "datos/fotos/mwdi0k2r3e71d.jpg",
+    "datos/fotos/mwdi0l46tr8ym.jpg",
+    "datos/fotos/mwdi0lc5yvh3r.jpg",
+    "datos/fotos/mwdi0lhi7g8qj.jpg",
+    "datos/fotos/mwdi0lqo7zk5c.jpg",
+    "datos/fotos/mwdi0m1x77tw4.jpg",
+    "datos/fotos/mwdi0mbetmtde.jpg",
+    "datos/fotos/mwdi0mhvumxu8.jpg",
+    "datos/fotos/mwdi0mnikpxkm.jpg",
+    "datos/fotos/mwdi0mwqv0jur.jpg"
    ],
    "corredor": {
     "nombre": "Karen Liberona",
