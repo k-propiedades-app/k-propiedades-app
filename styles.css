@@ -209,3 +209,6 @@ main.ancha { max-width: 1400px; }
 .resumen button:hover { border-color: var(--linea); background: var(--oro-claro); }
 .resumen button.activo { background: var(--oro); border-color: var(--oro); color: #fff; }
 .resumen button.activo b { color: #fff; }
+.botones-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
+.botones-top .btn { width: 100%; padding-left: 8px; padding-right: 8px; line-height: 1.25; text-align: center; display: flex; align-items: center; justify-content: center; }
+@media (max-width: 400px) { .botones-top .btn { font-size: 14px; } }
