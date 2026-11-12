@@ -195,10 +195,10 @@
     const t = String(v).trim().replace(/\s|\$|UF/gi, '');
     return Number(/,\d{1,2}$/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t.replace(/[.,]/g, '')) || 0;
   };
-  const AMBAS = 'Arriendo y venta';
+  const AMBAS = 'Venta o Arriendo', esAmbas = p => p.operacion === AMBAS || p.operacion === 'Arriendo y venta';
   const precioUno = (v, mon, arr) => !num(v) ? 'Consultar' : (mon === 'UF' ? 'UF ' : '$') + num(v).toLocaleString('es-CL') + (arr && mon !== 'UF' ? ' /mes' : '');
-  // Con "Arriendo y venta" muestra los dos precios.
-  const precio = p => p.operacion === AMBAS
+  // Con "Venta o Arriendo" muestra los dos precios.
+  const precio = p => esAmbas(p)
     ? `Venta ${precioUno(p.precio, p.moneda)} · Arriendo ${precioUno(p.precioArriendo, p.monedaArriendo, true)}`
     : precioUno(p.precio, p.moneda, p.operacion === 'Arriendo');
   const codigo = p => p.codigo ? 'Cód. ' + String(p.codigo).padStart(4, '0') : '';
@@ -250,7 +250,7 @@
   function listar() {
     const com = $('comuna').value, tipo = $('tipo').value, op = $('operacion').value, cod = $('codigo').value.replace(/\D/g, '');
     const vis = datos.propiedades.filter(p => cod ? Number(p.codigo) === Number(cod)
-      : (!tipo || p.tipo === tipo) && (!op || p.operacion === op || p.operacion === AMBAS) && (!com || p.comuna === com));
+      : (!tipo || p.tipo === tipo) && (!op || p.operacion === op || esAmbas(p)) && (!com || p.comuna === com));
     const g = $('grilla');
     if (!vis.length) { g.innerHTML = `<p class="vacio">${datos.propiedades.length ? 'No hay propiedades con esa búsqueda. Escríbenos y te ayudamos a encontrar la tuya.' : 'Pronto publicaremos nuevas propiedades.<br>Escríbenos y te ayudamos a encontrar la tuya.'}</p>`; return; }
     g.innerHTML = vis.map(p => `<button class="card" data-id="${esc(p.id)}">

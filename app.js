@@ -171,10 +171,10 @@ async function valorUF() {
   } catch (e) { /* sin internet o servicio caído */ }
   return g && g.v ? (ufCache = g.v) : null;
 }
-// Una propiedad puede ser para arriendo, venta o ambas ("Arriendo y venta").
+// Una propiedad puede ser para arriendo, venta o ambas ("Venta o Arriendo").
 // En ambas, precio/moneda es el de venta y precioArriendo/monedaArriendo el de arriendo.
-const AMBAS = 'Arriendo y venta';
-const esAmbas = p => p.operacion === AMBAS;
+const AMBAS = 'Venta o Arriendo';
+const esAmbas = p => p.operacion === AMBAS || p.operacion === 'Arriendo y venta'; // nombre anterior
 const tieneOp = (p, op) => p.operacion === op || (esAmbas(p) && (op === 'Arriendo' || op === 'Venta'));
 function preciosDe(p) {
   if (!esAmbas(p)) return [{ op: p.operacion, precio: p.precio, moneda: p.moneda }];
@@ -198,7 +198,7 @@ function precioSolo(x) {
   const n = num(x.precio).toLocaleString('es-CL');
   return x.moneda === 'UF' ? `UF ${n}` : `$${n}`;
 }
-// Texto corto del precio. Con "Arriendo y venta" muestra los dos.
+// Texto corto del precio. Con "Venta o Arriendo" muestra los dos.
 function precioTxt(p) {
   if (!esAmbas(p)) return precioSolo(p);
   return preciosDe(p).filter(x => num(x.precio)).map(x => `${x.op} ${precioSolo(x)}${x.op === 'Arriendo' && x.moneda !== 'UF' ? '/mes' : ''}`).join(' · ');
@@ -451,7 +451,7 @@ VISTAS.editarProp = async (main, { id }) => {
   main.innerHTML = `<form id="f">
     ${campo('titulo', 'Nombre corto (ej. Depto 2D2B Ñuñoa)')}
     <div class="fila"><div><label>Tipo</label><select name="tipo">${opt(TIPOS.includes(p.tipo) ? TIPOS : [...TIPOS, p.tipo], p.tipo)}</select></div>
-      <div><label>Operación</label><select name="operacion">${opt(['Arriendo', 'Venta', AMBAS], p.operacion)}</select></div></div>
+      <div><label>Operación</label><select name="operacion">${opt(['Arriendo', 'Venta', AMBAS], esAmbas(p) ? AMBAS : p.operacion)}</select></div></div>
     <label>Corredor a cargo (se muestra en la vitrina)</label>${await (async () => {
       const nombres = (await corredores()).map(c => c.nombre);
       if (p.corredor && !nombres.includes(p.corredor)) nombres.push(p.corredor);
@@ -494,7 +494,7 @@ VISTAS.editarProp = async (main, { id }) => {
   // Campo, parcela y sitio: hectáreas que se convierten a m² totales.
   const verHa = () => { $('#filaHa').hidden = !CON_HECTAREAS.includes($('#f [name=tipo]').value); };
   $('#f [name=tipo]').addEventListener('change', verHa); verHa();
-  // Arriendo y venta: se piden los dos precios.
+  // Venta o Arriendo: se piden los dos precios.
   const verOp = () => { const op = $('#f [name=operacion]').value;
     $('#filaArriendo').hidden = op !== AMBAS;
     $('#lblPrecio').textContent = op === 'Arriendo' ? 'Precio de arriendo (mensual)' : 'Precio de venta'; };
