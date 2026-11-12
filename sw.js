@@ -1,7 +1,7 @@
 // Guarda la app en el celular para que funcione sin conexión.
-const CACHE = 'kprop-v22';
+const CACHE = 'kprop-v23';
 const ARCHIVOS = ['./', 'index.html', 'app.js', 'styles.css', 'manifest.webmanifest',
-  'logo.png', 'sticker.png', 'icons/icon-192.png', 'icons/icon-512.png'];
+  'logo.png', 'marca.png', 'sticker.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
