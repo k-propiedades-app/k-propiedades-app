@@ -195,7 +195,12 @@
     const t = String(v).trim().replace(/\s|\$|UF/gi, '');
     return Number(/,\d{1,2}$/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t.replace(/[.,]/g, '')) || 0;
   };
-  const precio = p => !num(p.precio) ? 'Consultar' : (p.moneda === 'UF' ? 'UF ' : '$') + num(p.precio).toLocaleString('es-CL') + (p.operacion === 'Arriendo' && p.moneda !== 'UF' ? ' /mes' : '');
+  const AMBAS = 'Arriendo y venta';
+  const precioUno = (v, mon, arr) => !num(v) ? 'Consultar' : (mon === 'UF' ? 'UF ' : '$') + num(v).toLocaleString('es-CL') + (arr && mon !== 'UF' ? ' /mes' : '');
+  // Con "Arriendo y venta" muestra los dos precios.
+  const precio = p => p.operacion === AMBAS
+    ? `Venta ${precioUno(p.precio, p.moneda)} · Arriendo ${precioUno(p.precioArriendo, p.monedaArriendo, true)}`
+    : precioUno(p.precio, p.moneda, p.operacion === 'Arriendo');
   const codigo = p => p.codigo ? 'Cód. ' + String(p.codigo).padStart(4, '0') : '';
   const wa = t => { let d = String(t || '').replace(/\D/g, ''); if (d.length === 9 && d[0] === '9') d = '56' + d; return d; };
   const linkWa = (msg, tel) => `https://wa.me/${wa(tel || datos.contacto.telefono)}?text=${encodeURIComponent(msg)}`;
@@ -245,7 +250,7 @@
   function listar() {
     const com = $('comuna').value, tipo = $('tipo').value, op = $('operacion').value, cod = $('codigo').value.replace(/\D/g, '');
     const vis = datos.propiedades.filter(p => cod ? Number(p.codigo) === Number(cod)
-      : (!tipo || p.tipo === tipo) && (!op || p.operacion === op) && (!com || p.comuna === com));
+      : (!tipo || p.tipo === tipo) && (!op || p.operacion === op || p.operacion === AMBAS) && (!com || p.comuna === com));
     const g = $('grilla');
     if (!vis.length) { g.innerHTML = `<p class="vacio">${datos.propiedades.length ? 'No hay propiedades con esa búsqueda. Escríbenos y te ayudamos a encontrar la tuya.' : 'Pronto publicaremos nuevas propiedades.<br>Escríbenos y te ayudamos a encontrar la tuya.'}</p>`; return; }
     g.innerHTML = vis.map(p => `<button class="card" data-id="${esc(p.id)}">
@@ -253,7 +258,7 @@
         <span class="etq">${esc(p.operacion)}</span>${p.estado === 'Negociando' ? '<span class="etq neg">En negociación</span>' : ''}
         ${p.codigo ? `<span class="cod">${codigo(p)}</span>` : ''}</div>
       <div class="specs">${specs(p)}</div>
-      <div class="cuerpo"><h3>${esc(titular(p))}</h3><div class="sub">${esc(p.titulo)}</div><div class="precio">${precio(p)}</div>
+      <div class="cuerpo"><h3>${esc(titular(p))}</h3><div class="sub">${esc(p.titulo)}</div><div class="precio">${precio(p).replace(" · ", "<br>")}</div>
       ${p.corredor ? `<div class="corr-card">👤 <b>${esc(p.corredor.nombre)}</b> · Corredor a cargo</div>` : ''}</div></button>`).join('');
     g.querySelectorAll('.card').forEach(b => b.onclick = () => { location.hash = 'p=' + b.dataset.id; });
   }
