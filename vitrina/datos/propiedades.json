@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-12T12:16:12.076Z",
+ "actualizado": "2026-11-12T17:28:52.350Z",
  "contacto": {
   "nombre": "K Propiedades",
   "telefono": "+56 9 3499 7313",
@@ -18,7 +18,7 @@
    "codigo": 1,
    "titulo": "Casa Lomas del Carmen",
    "tipo": "Casa",
-   "operacion": "Arriendo y venta",
+   "operacion": "Venta o Arriendo",
    "estado": "Disponible",
    "comuna": "Temuco",
    "region": "La Araucanía",
@@ -37,18 +37,20 @@
    "gastosComunes": "",
    "descripcion": "1° piso \nDormitorio principal con baño\nescritorio/ pieza \nBaño vista \nCocina \nLogia \nPieza de servicio con baño \nHall de entrada \nLiving \nComedor \nQuincho \nPiscina \nTina caliente a calefacción central \n\n2° piso \n2 baños \n4 piezas \nSala de estar central \n\nCalefacción a petróleo 300 mil aprox/ mes en invierno \n2 estufas a pelet de respaldo \nCondominio cerrado \nPortón eléctrico interior\n",
    "fotos": [
-    "datos/fotos/mwdi0fm8ryqum.jpg",
-    "datos/fotos/mwdi0ibjmtn5p.jpg",
-    "datos/fotos/mwdi0k2r3e71d.jpg",
-    "datos/fotos/mwdi0l46tr8ym.jpg",
-    "datos/fotos/mwdi0lc5yvh3r.jpg",
-    "datos/fotos/mwdi0lhi7g8qj.jpg",
-    "datos/fotos/mwdi0lqo7zk5c.jpg",
-    "datos/fotos/mwdi0m1x77tw4.jpg",
-    "datos/fotos/mwdi0mbetmtde.jpg",
-    "datos/fotos/mwdi0mhvumxu8.jpg",
-    "datos/fotos/mwdi0mnikpxkm.jpg",
-    "datos/fotos/mwdi0mwqv0jur.jpg"
+    "datos/fotos/mwdi0nknwbv2l-v3.jpg",
+    "datos/fotos/mwdi0fm8ryqum-v3.jpg",
+    "datos/fotos/mwdi0ibjmtn5p-v3.jpg",
+    "datos/fotos/mwdi0k2r3e71d-v3.jpg",
+    "datos/fotos/mwdi0l46tr8ym-v3.jpg",
+    "datos/fotos/mwdi0lc5yvh3r-v3.jpg",
+    "datos/fotos/mwdi0lhi7g8qj-v3.jpg",
+    "datos/fotos/mwdi0lqo7zk5c-v3.jpg",
+    "datos/fotos/mwdi0m1x77tw4-v3.jpg",
+    "datos/fotos/mwdi0mbetmtde-v3.jpg",
+    "datos/fotos/mwdi0mhvumxu8-v3.jpg",
+    "datos/fotos/mwdi0mnikpxkm-v3.jpg",
+    "datos/fotos/mwdi0mwqv0jur-v3.jpg",
+    "datos/fotos/mwdi0n81zguhs-v3.jpg"
    ],
    "corredor": {
     "nombre": "Karen Liberona",
