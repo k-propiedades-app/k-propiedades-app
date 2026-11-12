@@ -239,6 +239,18 @@ async function imagen(blob) {
   return new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = URL.createObjectURL(blob); });
 }
 // Achica la foto (lado mayor 1600 px) y opcionalmente pone el logo abajo a la derecha con halo blanco.
+// Versión del logo de la marca de agua. Al cambiar el logo se sube este número
+// y las fotos guardadas se vuelven a marcar solas con el logo nuevo.
+const MARCA_V = 2;
+async function actualizarMarcas() {
+  const viejas = (await todos('media')).filter(m => m.kind === 'foto' && m.blobMarca && m.blob && (m.marcaV || 1) < MARCA_V);
+  if (!viejas.length) return;
+  aviso(`Poniendo el logo nuevo en ${viejas.length} foto(s)…`);
+  for (const m of viejas) {
+    try { m.blobMarca = await procesarFoto(m.blob, true); m.marcaV = MARCA_V; await guardar('media', m); } catch (e) { /* se reintenta al abrir de nuevo */ }
+  }
+  aviso('Logo nuevo listo en las fotos. Publica la vitrina para actualizarla.');
+}
 async function procesarFoto(blob, conMarca) {
   const img = await imagen(blob);
   const max = 1600, esc_ = Math.min(1, max / Math.max(img.width, img.height));
@@ -679,7 +691,7 @@ VISTAS.propiedad = async (main, { id }) => {
         const blob = await procesarFoto(file, false);
         const blobMarca = cfg.marcaAuto ? await procesarFoto(file, true) : null;
         if (!blob) throw new Error('foto vacía');
-        await guardar('media', { id: nuevoId(), propId: id, kind: 'foto', name: file.name, blob, blobMarca, creado: Date.now() });
+        await guardar('media', { id: nuevoId(), propId: id, kind: 'foto', name: file.name, blob, blobMarca, marcaV: MARCA_V, creado: Date.now() });
       } catch (e) { fallidas++; }
     }
     if (fallidas) alert(`${fallidas} foto(s) no se pudieron leer. Prueba con otra foto o en formato JPG.`);
@@ -1315,7 +1327,8 @@ async function publicarVitrina(boton) {
       const fotos = (tapa ? [tapa, ...todas.filter(f => f !== tapa)] : todas).slice(0, 12);
       const rutas = [];
       for (const f of fotos) {
-        const ruta = `vitrina/datos/fotos/${f.id}.jpg`;
+        // El nombre cambia con la versión del logo para que la vitrina reciba la foto nueva.
+        const ruta = `vitrina/datos/fotos/${f.id}${(f.marcaV || 1) > 1 ? '-v' + f.marcaV : ''}.jpg`;
         usadas.add(ruta); rutas.push(ruta.replace('vitrina/', ''));
         if (!existentes.has(ruta)) {
           boton.textContent = `Subiendo fotos… ${++n}`;
@@ -1400,3 +1413,4 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 history.replaceState({ n: 1 }, '');
 pila.push({ vista: 'inicio', params: {} });
 pintar();
+actualizarMarcas().catch(() => {});
