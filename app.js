@@ -387,8 +387,8 @@ VISTAS.propiedades = async (main) => {
       <select id="fTipo" aria-label="Tipo de propiedad"><option value="">Todos los tipos</option>${TIPOS.map(t => `<option>${t}</option>`).join('')}</select>
       <select id="fOp" aria-label="Venta o arriendo"><option value="">Venta y arriendo</option><option>Venta</option><option>Arriendo</option></select>
     </div>
-    <div class="resumen">${ESTADOS.map(e => `<span>${e} <b>${props.filter(p => estadoDe(p) === e).length}</b></span>`).join('')}
-      <span>⭐ Postventa <b>${props.filter(p => postventaDe(p).pendiente).length}</b></span></div>
+    <div class="resumen">${ESTADOS.map(e => `<button type="button" data-est="${e}">${e} <b>${props.filter(p => estadoDe(p) === e).length}</b></button>`).join('')}
+      <button type="button" data-est="pv">⭐ Postventa <b>${props.filter(p => postventaDe(p).pendiente).length}</b></button></div>
     <div class="modo-vista"><div class="seg" role="group" aria-label="Forma de ver">
       <button data-modo="tabla">▦ Tabla</button><button data-modo="tarjetas">▤ Tarjetas</button></div>
       <button class="btn sec" id="csv">⬇ Excel</button></div>
@@ -442,8 +442,13 @@ VISTAS.propiedades = async (main) => {
     $('#lista tbody').onclick = e => { const tr = e.target.closest('tr'); if (tr) ir('propiedad', { id: tr.dataset.id }); };
     activarMas();
   };
+  // Tocar un estado del resumen filtra por ese estado; tocarlo de nuevo quita el filtro.
+  const marcarResumen = () => document.querySelectorAll('.resumen [data-est]').forEach(b => b.classList.toggle('activo', b.dataset.est === $('#filtro').value));
+  document.querySelectorAll('.resumen [data-est]').forEach(b => b.onclick = () => {
+    $('#filtro').value = $('#filtro').value === b.dataset.est ? '' : b.dataset.est; listar(); });
   const listar = (seguir = false) => {
     if (!seguir) mostrar = POR_PAGINA;
+    marcarResumen();
     document.querySelectorAll('[data-modo]').forEach(b => b.classList.toggle('activo', b.dataset.modo === modo));
     $('#csv').hidden = modo !== 'tabla';
     $('#vista').classList.toggle('ancha', modo === 'tabla');
