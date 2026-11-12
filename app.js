@@ -1324,7 +1324,7 @@ async function publicarVitrina(boton) {
     for (const p of props) {
       const todas = (await mediaDe(p.id)).filter(m => m.kind === 'foto').sort((a, b) => a.creado - b.creado);
       const tapa = portadaDe(p, todas);
-      const fotos = (tapa ? [tapa, ...todas.filter(f => f !== tapa)] : todas).slice(0, 12);
+      const fotos = tapa ? [tapa, ...todas.filter(f => f !== tapa)] : todas; // todas las fotos, sin límite
       const rutas = [];
       for (const f of fotos) {
         // El nombre cambia con la versión del logo para que la vitrina reciba la foto nueva.
