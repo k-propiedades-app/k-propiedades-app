@@ -382,7 +382,8 @@ VISTAS.propiedades = async (main) => {
   const fotosDe = p => fotosPor.get(p.id) || [];
   const uf = await valorUF();
   main.innerHTML = `
-    <button class="btn sec ancho" id="irNews" style="margin:0 0 12px">📰 Newsletter para LinkedIn</button>
+    <div class="botones-top"><button class="btn sec" id="irNews">📰 Newsletter LinkedIn</button>
+      <a class="btn" href="${URL_VITRINA}" target="_blank" rel="noopener">🌐 Web Propiedades</a></div>
     <div class="barra">
       <input id="buscar" type="search" placeholder="Buscar por código, comuna, dirección, rol…">
       <select id="filtro" style="max-width:40%"><option value="">Todas</option>${ESTADOS.map(e => `<option>${e}</option>`).join('')}<option value="pv">⭐ Postventa pendiente</option></select>
