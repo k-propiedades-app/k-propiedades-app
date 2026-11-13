@@ -255,10 +255,10 @@ async function imagen(blob) {
   }
   return new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = URL.createObjectURL(blob); });
 }
-// Achica la foto (lado mayor 1600 px) y opcionalmente pone el logo al centro, en blanco semitransparente.
+// Achica la foto (lado mayor 1600 px) y opcionalmente pone el logo centrado abajo, en blanco semitransparente.
 // Versión del logo de la marca de agua. Al cambiar el logo se sube este número
 // y las fotos guardadas se vuelven a marcar solas con el logo nuevo.
-const MARCA_V = 4;
+const MARCA_V = 5;
 // todas = true vuelve a marcar todas las fotos (botón en Ajustes), aunque ya estén al día.
 async function actualizarMarcas(todas = false) {
   const viejas = (await todos('media')).filter(m => m.kind === 'foto' && m.blob && (todas || (m.blobMarca && (m.marcaV || 1) < MARCA_V)));
@@ -282,9 +282,9 @@ async function procesarFoto(blob, conMarca) {
   g.drawImage(img, 0, 0, w, h);
   if (conMarca) {
     const logo = await cargarLogo();
-    // Logo blanco al 45% del ancho, centrado, 55% visible y con sombra muy suave para fondos claros.
+    // Logo blanco al 45% del ancho, centrado abajo (para no tapar la propiedad), 55% visible y con sombra muy suave para fondos claros.
     const lw = Math.round(w * 0.45), lh = Math.round(logo.height * lw / logo.width);
-    const x = Math.round((w - lw) / 2), y = Math.round((h - lh) / 2);
+    const x = Math.round((w - lw) / 2), y = Math.round(h - lh - h * 0.06);
     g.save();
     g.globalAlpha = 0.18; g.filter = `blur(${Math.max(2, lw / 300)}px) brightness(0)`;
     g.drawImage(logo, x + 2, y + 2, lw, lh);
