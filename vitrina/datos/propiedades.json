@@ -1,5 +1,5 @@
 {
- "actualizado": "2026-11-13T14:01:17.184Z",
+ "actualizado": "2026-11-18T20:03:41.935Z",
  "contacto": {
   "nombre": "K Propiedades",
   "telefono": "+56 9 3499 7313",
@@ -13,6 +13,45 @@
   }
  ],
  "propiedades": [
+  {
+   "id": "mwmjm0ir56e78",
+   "codigo": 1763,
+   "titulo": "Parcela Pumalal",
+   "tipo": "Parcela",
+   "operacion": "Venta",
+   "estado": "Disponible",
+   "comuna": "Temuco",
+   "region": "La Araucanía",
+   "ubicacion": "Camino Pumalal",
+   "precio": 75000000,
+   "moneda": "CLP",
+   "m2util": "",
+   "m2total": "5000",
+   "hectareas": "0,5 ha",
+   "dorm": "",
+   "banos": "",
+   "estac": "",
+   "bodega": "",
+   "gastosComunes": "",
+   "descripcion": "Se vende parcela de 5.000 metros en condominio sector Pumalal con excelente conectividad.\nCuenta con agua y luz\nTopografía plana y con una vista inmejorable.",
+   "fotos": [
+    "datos/fotos/mwmjtguonyp0r-v5.jpg",
+    "datos/fotos/mwmjtgmn897m3-v5.jpg",
+    "datos/fotos/mwmjtgqk64fi2-v5.jpg",
+    "datos/fotos/mwmjtgyu8k7cq-v5.jpg",
+    "datos/fotos/mwmjth33g2wb7-v5.jpg",
+    "datos/fotos/mwmjth6z2pb0y-v5.jpg",
+    "datos/fotos/mwmjthb29a6e6-v5.jpg",
+    "datos/fotos/mwmjthfa23l8e-v5.jpg",
+    "datos/fotos/mwmjthja7w8h0-v5.jpg",
+    "datos/fotos/mwmjthohozeo6-v5.jpg"
+   ],
+   "corredor": {
+    "nombre": "Karen Liberona",
+    "telefono": "+56 9 3499 7313",
+    "email": "kliberona.b@gmail.com"
+   }
+  },
   {
    "id": "mwdhhjt4lh5ef",
    "codigo": 1,
@@ -28,7 +67,7 @@
    "precioArriendo": 1800000,
    "monedaArriendo": "CLP",
    "m2util": "250",
-   "m2total": "1.100",
+   "m2total": "1100",
    "hectareas": "",
    "dorm": "4",
    "banos": "2",
